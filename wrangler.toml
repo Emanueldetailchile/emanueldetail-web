@@ -12,4 +12,4 @@ binding = "IMAGES"
 bucket_name = "emanueldetail-imagenes"
 
 [vars]
-R2_PUBLIC_URL = ""https://pub-b985f908dab04541837258217cdf0a0e.r2.dev""
+R2_PUBLIC_URL = "https://pub-b985f908dab04541837258217cdf0a0e.r2.dev"
