@@ -5,7 +5,7 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "emanueldetail-db"
-database_id = ""c7f39a9b-0825-46c6-bfd8-c960d48fcc44""
+database_id = "c7f39a9b-0825-46c6-bfd8-c960d48fcc44"
 
 [[r2_buckets]]
 binding = "IMAGES"
