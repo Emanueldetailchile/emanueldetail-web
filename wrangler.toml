@@ -1,0 +1,15 @@
+name = "emanueldetail-web"
+compatibility_date = "2026-10-26"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "emanueldetail-db"
+database_id = "REEMPLAZAR_CON_ID_DE_D1"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "emanueldetail-imagenes"
+
+[vars]
+R2_PUBLIC_URL = "https://pub-f8e69eb8880648669493141a8b4da458.r2.dev"

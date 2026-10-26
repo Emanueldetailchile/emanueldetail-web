@@ -1,0 +1,41 @@
+EMANUELDETAIL — PAQUETE DEL PROYECTO
+
+INCLUYE
+- public/index.html: web pública, logo original sin modificar y precios de servicios acordados.
+- public/admin.html: panel para administrar productos y galería.
+- functions/api/[[path]].js: API para leer/guardar productos, galería y subir imágenes a R2.
+- schema.sql: tablas necesarias (CREATE IF NOT EXISTS).
+- wrangler.toml: configuración de Pages, D1 y R2.
+
+IMPORTANTE
+Este ZIP es el código del proyecto, no una implementación ya publicada. Cloudflare Pages con funciones y conexiones D1/R2 no se despliega con solo cargar imágenes estáticas en “Cargar archivos”. Debe desplegarse conectado a un repositorio Git o mediante Wrangler. No cargues este ZIP en el formulario de carga estática esperando que la administración funcione.
+
+RECURSOS YA CREADOS
+- Pages: emanueldetail-web
+- D1: emanueldetail-db
+- R2: emanueldetail-imagenes
+- URL pública de desarrollo R2: https://pub-f8e69eb8880648669493141a8b4da458.r2.dev
+
+PASOS DE DESPLIEGUE (una vez el proyecto esté en GitHub y conectado a Pages)
+1. En el archivo wrangler.toml, reemplazar REEMPLAZAR_CON_ID_DE_D1 por el ID real de emanueldetail-db. El nombre por sí solo no es suficiente; el ID se obtiene en D1 > base de datos > detalles.
+2. Ejecutar schema.sql contra la base D1 existente (las tablas usan IF NOT EXISTS, no borra datos).
+3. En Pages > emanueldetail-web > Settings > Functions, vincular D1 con variable/binding DB y la base emanueldetail-db.
+4. Vincular R2 bucket emanueldetail-imagenes con binding IMAGES.
+5. En Settings > Variables and Secrets, crear ADMIN_TOKEN como secreto con una contraseña larga elegida por el propietario. No poner la contraseña en archivos del proyecto.
+6. Asegurar que R2 tenga habilitada la URL pública de desarrollo si se usará para imágenes; para producción conviene un dominio propio. R2 de uso medido puede generar cargos si se superan las franquicias gratuitas; revisar precios de Cloudflare.
+7. Desplegar el proyecto desde GitHub/Pages. Luego probar /api/health, la web pública y /admin.html.
+
+ADMINISTRACIÓN
+Abrir /admin.html y entrar con el valor configurado en ADMIN_TOKEN. Permite añadir y borrar productos y fotos de galería. La edición de productos existentes y la gestión de servicios/precios del bloque de servicios aún no está implementada; no afirmar que se puede editar todo el sitio desde el panel.
+
+PRECIOS DE SERVICIOS CONFIRMADOS
+- Promoción interior vehículo: $35.000
+- Interior completo: $50.000
+- Asientos delanteros y traseros: $20.000
+- Cielo: desde $20.000 aprox.
+- Piso y alfombras: $20.000
+- Sillón 2 cuerpos: $20.000
+- Sillón 3/4 cuerpos, L o grande: desde $35.000
+- Futones: $10.000–$15.000
+- Juego 6–8 sillas: $15.000–$20.000
+Los productos no llevan precios inventados: se ingresan desde el panel.
