@@ -64,6 +64,35 @@ export async function onRequest(context) {
     );
   }
 
+  if (path === "site-images" && req.method === "GET") {
+    const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key=?").bind("site_images").first();
+    let images = {};
+    if (row && row.value) {
+      try { images = JSON.parse(row.value); } catch { images = {}; }
+    }
+    return json(images);
+  }
+
+  if (path === "site-images" && req.method === "PUT") {
+    if (!authorized(req, env)) {
+      return json({ error: "Debes iniciar sesión como administrador" }, 401);
+    }
+    let body = {};
+    try { body = await req.json(); } catch { return json({ error: "JSON inválido" }, 400); }
+    const allowed = new Set(["home_1","home_2","home_3","home_4","gallery_1","gallery_2","gallery_3","product_1","product_2","product_3","product_4"]);
+    if (!body || typeof body.images !== "object" || Array.isArray(body.images)) {
+      return json({ error: "Se esperaba un objeto de imágenes" }, 400);
+    }
+    const images = {};
+    for (const [key, value] of Object.entries(body.images)) {
+      if (!allowed.has(key)) continue;
+      if (typeof value === "string" && value.length <= 2048) images[key] = value;
+    }
+    await env.DB.prepare("INSERT INTO site_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+      .bind("site_images", JSON.stringify(images)).run();
+    return json({ ok: true, images });
+  }
+
   if (path === "gallery" && req.method === "GET") {
     const { results = [] } = await env.DB
       .prepare(
