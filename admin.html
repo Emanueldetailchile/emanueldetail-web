@@ -1,3 +1,329 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#050505"><title>Administración | EmanuelDetail</title><style>:root{--gold:#f4bd28;--bg:#080808;--panel:#151515;--line:#4b3912}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f7f4ec;font:16px Arial,sans-serif}.wrap{max-width:900px;margin:auto;padding:20px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}h1,h2{color:var(--gold)}label{display:block;margin:12px 0 5px}input,textarea,button{font:inherit;padding:11px;border-radius:8px;border:1px solid #63502a;width:100%;background:#090909;color:white}button{background:var(--gold);color:#111;font-weight:bold;cursor:pointer;margin-top:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.small{font-size:13px;color:#bbb}.item{border-bottom:1px solid #44371d;padding:10px 0;display:flex;justify-content:space-between;gap:10px}.item button{width:auto;margin:0;background:#6b1d1d;color:white}.hidden{display:none}.status{padding:10px;border-radius:8px;background:#222;white-space:pre-wrap}@media(max-width:600px){.grid{grid-template-columns:1fr}}</style></head><body><div class="wrap"><h1>EMANUELDETAIL · Panel administrador</h1><p class="small">Desde aquí puedes administrar productos y fotos de galería. No cambia el diseño ni el logo de la página.</p><section class="card" id="login"><h2>Iniciar sesión</h2><label>Clave de administrador</label><input id="token" type="password" autocomplete="current-password" placeholder="Clave configurada en Cloudflare"><button id="loginbtn">Entrar</button><p class="small">La clave se configura como ADMIN_TOKEN en Pages → Settings → Variables and Secrets.</p></section><div id="app" class="hidden"><div id="status" class="status">Conectado al panel.</div><section class="card"><h2>Agregar producto</h2><div class="grid"><div><label>Nombre *</label><input id="name" placeholder="Ej. Limpiatapiz EmanuelDetail"></div><div><label>Precio (opcional)</label><input id="price" placeholder="Ej. 7990 o Consultar"></div><div><label>Categoría</label><input id="category" placeholder="Limpieza, accesorios..."></div><div><label>Enlace de pago o consulta</label><input id="payment" placeholder="https://..."></div></div><label>Descripción</label><textarea id="description" rows="3"></textarea><label>Foto del producto (máx. 8 MB)</label><input id="productfile" type="file" accept="image/*"><button id="addproduct">Guardar producto</button><div id="products"></div></section><section class="card"><h2>Agregar foto a la galería</h2><label>Foto del trabajo (máx. 8 MB)</label><input id="galleryfile" type="file" accept="image/*"><label>Descripción</label><input id="caption" placeholder="Ej. Antes y después de asientos"><button id="addgallery">Guardar foto</button><div id="gallery"></div></section><button id="logout">Cerrar sesión</button></div></div><script>
-let token=sessionStorage.getItem('ed_admin_token')||'';const $=id=>document.getElementById(id);function status(t){$('status').textContent=t}function headers(){return {'Authorization':'Bearer '+token}}async function api(path,opts={}){const r=await fetch('/api/'+path,{...opts,headers:{...headers(),...(opts.headers||{})}});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Error(d.error||'Error '+r.status);return d}function show(){ $('login').classList.toggle('hidden',!!token);$('app').classList.toggle('hidden',!token);if(token)refresh()}async function login(){token=$('token').value;try{const r=await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token})});const d=await r.json();if(!r.ok)throw Error(d.error||'Clave incorrecta');sessionStorage.setItem('ed_admin_token',token);show()}catch(e){alert(e.message)}}async function upload(file){if(!file)return '';const fd=new FormData();fd.append('file',file);const d=await api('upload',{method:'POST',body:fd});if(!d.publicUrl)throw Error('La subida llegó a R2, pero falta configurar R2_PUBLIC_URL en Cloudflare Pages.');return d.publicUrl}async function refresh(){try{const [ps,gs]=await Promise.all([api('products'),api('gallery')]);$('products').innerHTML='<h3>Productos publicados</h3>'+ps.map(p=>`<div class="item"><span>${p.name} · ${p.price||'Consultar'}</span><button onclick="del('products/${p.id}')">Eliminar</button></div>`).join('');$('gallery').innerHTML='<h3>Fotos publicadas</h3>'+gs.map(g=>`<div class="item"><span>${g.caption||'Foto'} <img src="${g.image_url}" style="width:55px;vertical-align:middle"></span><button onclick="del('gallery/${g.id}')">Eliminar</button></div>`).join('');status('Conectado. Puedes agregar o eliminar productos y fotos.')}catch(e){status(e.message)}}async function del(p){if(!confirm('¿Eliminar este elemento?'))return;try{await api(p,{method:'DELETE'});refresh()}catch(e){alert(e.message)}}$('loginbtn').onclick=login;$('addproduct').onclick=async()=>{try{let image_url=await upload($('productfile').files[0]);await api('products',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:$('name').value,price:$('price').value,category:$('category').value,description:$('description').value,image_url,payment_url:$('payment').value})});['name','price','category','description','payment','productfile'].forEach(id=>$(id).value='');await refresh()}catch(e){alert(e.message)}};$('addgallery').onclick=async()=>{try{const image_url=await upload($('galleryfile').files[0]);if(!image_url)throw Error('Selecciona una foto.');await api('gallery',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({image_url,caption:$('caption').value})});$('galleryfile').value='';$('caption').value='';await refresh()}catch(e){alert(e.message)}};$('logout').onclick=()=>{sessionStorage.removeItem('ed_admin_token');token='';show()};show();
-</script></body></html>
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050505">
+<title>Administración | EmanuelDetail</title>
+<style>
+:root{--gold:#f4bd28;--bg:#080808;--panel:#151515;--line:#4b3912}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f7f4ec;font:16px Arial,sans-serif}
+.wrap{max-width:900px;margin:auto;padding:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
+h1,h2{color:var(--gold)}
+label{display:block;margin:12px 0 5px}
+input,textarea,button{font:inherit;padding:11px;border-radius:8px;border:1px solid #63502a;width:100%;background:#090909;color:white}
+button{background:var(--gold);color:#111;font-weight:bold;cursor:pointer;margin-top:10px}
+button:disabled{opacity:.6;cursor:wait}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.small{font-size:13px;color:#bbb}
+.item{border-bottom:1px solid #44371d;padding:10px 0;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.item button{width:auto;margin:0;background:#6b1d1d;color:white}
+.hidden{display:none}
+.status{padding:10px;border-radius:8px;background:#222;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>EMANUELDETAIL · Panel administrador</h1>
+<p class="small">Desde aquí puedes administrar productos y fotos de galería. No cambia el diseño ni el logo de la página.</p>
+
+<section class="card" id="login">
+<h2>Iniciar sesión</h2>
+<label>Clave de administrador</label>
+<input id="token" type="password" autocomplete="current-password" placeholder="Clave configurada en Cloudflare">
+<button id="loginbtn">Entrar</button>
+<p class="small">La clave se configura como ADMIN_TOKEN en Pages → Settings → Variables and Secrets.</p>
+</section>
+
+<div id="app" class="hidden">
+<div id="status" class="status" role="status" aria-live="polite">Conectado al panel.</div>
+
+<section class="card">
+<h2>Agregar producto</h2>
+<div class="grid">
+<div><label for="name">Nombre *</label><input id="name" placeholder="Ej. Limpiatapiz EmanuelDetail"></div>
+<div><label for="price">Precio (opcional)</label><input id="price" placeholder="Ej. 7990 o Consultar"></div>
+<div><label for="category">Categoría</label><input id="category" placeholder="Limpieza, accesorios..."></div>
+<div><label for="payment">Enlace de pago o consulta</label><input id="payment" placeholder="https://..."></div>
+</div>
+<label for="description">Descripción</label>
+<textarea id="description" rows="3"></textarea>
+<label for="productfile">Foto del producto (máx. 8 MB)</label>
+<input id="productfile" type="file" accept="image/*">
+<button id="addproduct">Guardar producto</button>
+<div id="products"></div>
+</section>
+
+<section class="card">
+<h2>Agregar foto a la galería</h2>
+<label for="galleryfile">Foto del trabajo (máx. 8 MB)</label>
+<input id="galleryfile" type="file" accept="image/*">
+<label for="caption">Descripción</label>
+<input id="caption" placeholder="Ej. Antes y después de asientos">
+<button id="addgallery">Guardar foto</button>
+<div id="gallery"></div>
+</section>
+
+<button id="logout">Cerrar sesión</button>
+</div>
+</div>
+
+<script>
+let token = sessionStorage.getItem('ed_admin_token') || '';
+const $ = id => document.getElementById(id);
+
+function status(message) {
+  $('status').textContent = message;
+}
+
+function headers() {
+  return { Authorization: 'Bearer ' + token };
+}
+
+async function api(path, opts = {}) {
+  const response = await fetch('/api/' + path, {
+    ...opts,
+    headers: {
+      ...headers(),
+      ...(opts.headers || {})
+    }
+  });
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error('El servidor respondió con un formato inesperado (HTTP ' + response.status + ').');
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Error HTTP ' + response.status);
+  }
+
+  return data;
+}
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[char]);
+}
+
+function show() {
+  $('login').classList.toggle('hidden', !!token);
+  $('app').classList.toggle('hidden', !token);
+  if (token) refresh();
+}
+
+async function login() {
+  const button = $('loginbtn');
+  button.disabled = true;
+  button.textContent = 'Ingresando...';
+
+  const enteredToken = $('token').value.trim();
+
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: enteredToken })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'No se pudo iniciar sesión.');
+    }
+
+    token = enteredToken;
+    sessionStorage.setItem('ed_admin_token', token);
+    show();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Entrar';
+  }
+}
+
+async function upload(file) {
+  if (!file) return '';
+
+  const form = new FormData();
+  form.append('file', file);
+
+  const data = await api('upload', {
+    method: 'POST',
+    body: form
+  });
+
+  if (!data.publicUrl) {
+    throw new Error('La imagen se subió, pero el servidor no devolvió una URL pública.');
+  }
+
+  return data.publicUrl;
+}
+
+async function refresh() {
+  status('Actualizando las listas...');
+
+  try {
+    const [products, gallery] = await Promise.all([
+      api('products'),
+      api('gallery')
+    ]);
+
+    $('products').innerHTML =
+      '<h3>Productos publicados (' + products.length + ')</h3>' +
+      products.map(product => `
+        <div class="item">
+          <span>${escapeHTML(product.name)} · ${escapeHTML(product.price || 'Consultar')}</span>
+          <button data-delete="products/${Number(product.id)}">Eliminar</button>
+        </div>
+      `).join('');
+
+    $('gallery').innerHTML =
+      '<h3>Fotos publicadas (' + gallery.length + ')</h3>' +
+      gallery.map(photo => `
+        <div class="item">
+          <span>
+            ${escapeHTML(photo.caption || 'Foto')}
+            <img src="${escapeHTML(photo.image_url)}" alt="Foto de galería"
+              style="width:55px;vertical-align:middle">
+          </span>
+          <button data-delete="gallery/${Number(photo.id)}">Eliminar</button>
+        </div>
+      `).join('');
+
+    status('Conectado. Productos: ' + products.length + '. Fotos: ' + gallery.length + '.');
+  } catch (error) {
+    status('No se pudieron actualizar las listas: ' + error.message);
+  }
+}
+
+async function deleteItem(path) {
+  if (!confirm('¿Eliminar este elemento?')) return;
+
+  try {
+    await api(path, { method: 'DELETE' });
+    status('Elemento eliminado. Actualizando lista...');
+    await refresh();
+  } catch (error) {
+    alert('No se pudo eliminar: ' + error.message);
+  }
+}
+
+$('products').addEventListener('click', event => {
+  const button = event.target.closest('[data-delete]');
+  if (button) deleteItem(button.dataset.delete);
+});
+
+$('gallery').addEventListener('click', event => {
+  const button = event.target.closest('[data-delete]');
+  if (button) deleteItem(button.dataset.delete);
+});
+
+$('loginbtn').onclick = login;
+
+$('addproduct').onclick = async () => {
+  const button = $('addproduct');
+  button.disabled = true;
+
+  try {
+    const name = $('name').value.trim();
+
+    if (!name) {
+      throw new Error('Escribe el nombre del producto.');
+    }
+
+    button.textContent = 'Guardando...';
+    status('Preparando el producto...');
+
+    const imageURL = await upload($('productfile').files[0]);
+
+    status('Enviando el producto a la base de datos...');
+
+    const result = await api('products', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        price: $('price').value.trim(),
+        category: $('category').value.trim(),
+        description: $('description').value.trim(),
+        image_url: imageURL,
+        payment_url: $('payment').value.trim()
+      })
+    });
+
+    status('Producto guardado en la base de datos. ID: ' + result.id);
+
+    ['name', 'price', 'category', 'description', 'payment', 'productfile']
+      .forEach(id => { $(id).value = ''; });
+
+    await refresh();
+  } catch (error) {
+    status('NO SE PUDO CONFIRMAR EL GUARDADO: ' + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Guardar producto';
+  }
+};
+
+$('addgallery').onclick = async () => {
+  const button = $('addgallery');
+  button.disabled = true;
+
+  try {
+    button.textContent = 'Guardando...';
+
+    const imageURL = await upload($('galleryfile').files[0]);
+
+    if (!imageURL) {
+      throw new Error('Selecciona una foto.');
+    }
+
+    status('Guardando la foto en la base de datos...');
+
+    const result = await api('gallery', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        image_url: imageURL,
+        caption: $('caption').value.trim()
+      })
+    });
+
+    status('Foto registrada en la base de datos. ID: ' + result.id);
+
+    $('galleryfile').value = '';
+    $('caption').value = '';
+
+    await refresh();
+  } catch (error) {
+    status('NO SE PUDO CONFIRMAR EL GUARDADO: ' + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Guardar foto';
+  }
+};
+
+$('logout').onclick = () => {
+  sessionStorage.removeItem('ed_admin_token');
+  token = '';
+  $('token').value = '';
+  show();
+};
+
+show();
+</script>
+</body>
+</html>
