@@ -1,0 +1,51 @@
+name: Backup del sitio EmanuelDetail
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 8 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preparar copia recuperable
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup-package
+          git archive --format=tar HEAD | tar -xf - -C backup-package
+          cat > backup-package/RESPALDO-METADATOS.txt <<EOF
+          EmanuelDetail - respaldo del código fuente
+          Repositorio: ${GITHUB_REPOSITORY}
+          Rama: ${GITHUB_REF_NAME}
+          Commit: ${GITHUB_SHA}
+          Fecha UTC: $(date -u +'%Y-%m-%d %H:%M:%S')
+          Importante: este paquete respalda archivos versionados en Git.
+          No incluye copias de seguridad de Cloudflare D1, R2, variables secretas,
+          credenciales, dominios ni datos externos no versionados.
+          EOF
+          cd backup-package
+          zip -qr "../EmanuelDetail-backup-${GITHUB_SHA::7}.zip" .
+          cd ..
+          sha256sum "EmanuelDetail-backup-${GITHUB_SHA::7}.zip" > "EmanuelDetail-backup-${GITHUB_SHA::7}.sha256"
+
+      - name: Publicar artefactos descargables
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmanuelDetail-backup-${{ github.sha }}
+          path: |
+            EmanuelDetail-backup-${{ github.sha }}.zip
+            EmanuelDetail-backup-${{ github.sha }}.sha256
+          retention-days: 90
+          if-no-files-found: error
