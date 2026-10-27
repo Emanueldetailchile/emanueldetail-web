@@ -57,6 +57,20 @@ button:disabled{opacity:.6;cursor:wait}
 <div id="site-images" class="image-grid"><p class="small">Cargando imágenes...</p></div>
 </section>
 
+<section class="card" id="payment-settings">
+<h2>Configuración de pagos de la tienda</h2>
+<p class="small">Estos datos se guardan en la base de datos y aparecen después de crear un pedido por transferencia. No ingreses contraseñas ni claves bancarias aquí.</p>
+<div class="grid">
+<div><label for="bankName">Banco</label><input id="bankName" placeholder="Nombre del banco"></div>
+<div><label for="accountHolder">Titular de la cuenta</label><input id="accountHolder" placeholder="Nombre o razón social"></div>
+<div><label for="taxId">RUT del titular</label><input id="taxId" placeholder="RUT"></div>
+<div><label for="accountType">Tipo de cuenta</label><input id="accountType" placeholder="Cuenta corriente, vista, RUT..."></div>
+<div><label for="accountNumber">Número de cuenta</label><input id="accountNumber" placeholder="Número de cuenta"></div>
+<div><label for="bankEmail">Correo para comprobantes</label><input id="bankEmail" type="email" placeholder="correo@ejemplo.cl"></div>
+</div>
+<button id="save-store-config">Guardar datos de transferencia</button>
+<p class="small">El pago con débito/crédito requiere integrar una pasarela comercial con credenciales privadas y confirmación segura del pago; no se habilita hasta completar esa integración.</p>
+</section>
 <section class="card">
 <h2>Agregar producto</h2>
 <div class="grid">
@@ -174,7 +188,7 @@ async function saveSiteImage(key, file) {
   current[key] = url;
   await api('site-images', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ images: current }) });
   status('Imagen guardada. La web pública la mostrará al recargar.');
-  await refreshSiteImages();
+  await Promise.all([refreshSiteImages(), loadStoreConfig()]);
 }
 
 async function restoreSiteImage(key) {
@@ -261,6 +275,23 @@ async function upload(file) {
 
   return data.publicUrl;
 }
+
+async function loadStoreConfig() {
+  const config = await api('store-config');
+  ['bankName','accountHolder','taxId','accountType','accountNumber','bankEmail'].forEach(id => { $(id).value = config[id] || ''; });
+}
+
+$('save-store-config').onclick = async () => {
+  const button = $('save-store-config');
+  button.disabled = true;
+  try {
+    const config = {};
+    ['bankName','accountHolder','taxId','accountType','accountNumber','bankEmail'].forEach(id => { config[id] = $(id).value.trim(); });
+    await api('store-config', { method:'PUT', headers:{'content-type':'application/json'}, body:JSON.stringify(config) });
+    status('Datos de transferencia guardados.');
+  } catch (error) { status('No se pudieron guardar los datos bancarios: ' + error.message); }
+  finally { button.disabled = false; }
+};
 
 async function refresh() {
   status('Actualizando las listas...');
