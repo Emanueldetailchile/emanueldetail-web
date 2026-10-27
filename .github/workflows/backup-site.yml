@@ -36,9 +36,9 @@ jobs:
           credenciales, dominios ni datos externos no versionados.
           EOF
           cd backup-package
-          zip -qr "../EmanuelDetail-backup-${GITHUB_SHA::7}.zip" .
+          zip -qr "../EmanuelDetail-backup-${GITHUB_SHA}.zip" .
           cd ..
-          sha256sum "EmanuelDetail-backup-${GITHUB_SHA::7}.zip" > "EmanuelDetail-backup-${GITHUB_SHA::7}.sha256"
+          sha256sum "EmanuelDetail-backup-${GITHUB_SHA}.zip" > "EmanuelDetail-backup-${GITHUB_SHA}.sha256"
 
       - name: Publicar artefactos descargables
         uses: actions/upload-artifact@v4
