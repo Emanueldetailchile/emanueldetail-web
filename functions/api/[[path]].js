@@ -64,6 +64,43 @@ export async function onRequest(context) {
     );
   }
 
+  if (path === "store-config" && req.method === "GET") {
+    const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key=?").bind("store_config").first();
+    let config = {};
+    if (row && row.value) { try { config = JSON.parse(row.value); } catch { config = {}; } }
+    return json({ bankName: config.bankName || "", accountHolder: config.accountHolder || "", taxId: config.taxId || "", accountType: config.accountType || "", accountNumber: config.accountNumber || "", bankEmail: config.bankEmail || "", cardPaymentEnabled: false });
+  }
+
+  if (path === "orders" && req.method === "POST") {
+    let body = {};
+    try { body = await req.json(); } catch { return json({ error: "Solicitud inválida" }, 400); }
+    const c = body.customer || {};
+    if (!c.name || !c.email || !c.phone || !c.address) return json({ error: "Completa nombre, correo, teléfono y dirección." }, 400);
+    if (!["transferencia", "tarjeta"].includes(body.paymentMethod)) return json({ error: "Forma de pago no válida." }, 400);
+    if (body.paymentMethod === "tarjeta") return json({ error: "Pago con tarjeta aún no habilitado. Primero hay que integrar y probar una pasarela segura con credenciales comerciales." }, 409);
+    if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 40) return json({ error: "El carrito está vacío o contiene demasiados productos." }, 400);
+    const cleanItems = [];
+    let total = 0;
+    for (const item of body.items) {
+      const id = Number(item.productId), qty = Number(item.quantity);
+      if (!Number.isInteger(id) || !Number.isInteger(qty) || qty < 1 || qty > 25) return json({ error: "Cantidad o producto no válido." }, 400);
+      const product = await env.DB.prepare("SELECT id,name,price,active FROM products WHERE id=? AND active=1").bind(id).first();
+      if (!product) return json({ error: "Uno de los productos ya no está disponible. Actualiza el catálogo." }, 409);
+      const price = Number(String(product.price || "").replace(/[^0-9]/g, ""));
+      if (!Number.isSafeInteger(price) || price <= 0) return json({ error: "El producto " + product.name + " aún no tiene precio válido." }, 409);
+      total += price * qty;
+      cleanItems.push({ productId: id, name: product.name, price, quantity: qty });
+    }
+    if (!Number.isSafeInteger(total) || total > 100000000) return json({ error: "Total fuera de rango." }, 400);
+    const cfgRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key=?").bind("store_config").first();
+    let cfg = {}; try { cfg = JSON.parse(cfgRow?.value || "{}"); } catch { cfg = {}; }
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS store_orders (id INTEGER PRIMARY KEY AUTOINCREMENT, order_number TEXT NOT NULL UNIQUE, customer_name TEXT NOT NULL, customer_email TEXT NOT NULL, customer_phone TEXT NOT NULL, customer_address TEXT NOT NULL, payment_method TEXT NOT NULL, items_json TEXT NOT NULL, total INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pendiente_transferencia', created_at INTEGER NOT NULL)").run();
+    const orderNumber = "ED-" + Date.now().toString(36).toUpperCase() + "-" + crypto.randomUUID().slice(0, 4).toUpperCase();
+    await env.DB.prepare("INSERT INTO store_orders(order_number,customer_name,customer_email,customer_phone,customer_address,payment_method,items_json,total,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)")
+      .bind(orderNumber, String(c.name).slice(0,160), String(c.email).slice(0,200), String(c.phone).slice(0,50), String(c.address).slice(0,500), "transferencia", JSON.stringify(cleanItems), total, "pendiente_transferencia", Date.now()).run();
+    return json({ ok: true, orderNumber, total, status: "pendiente_transferencia", bankDetails: { bankName: cfg.bankName || "", accountHolder: cfg.accountHolder || "", taxId: cfg.taxId || "", accountType: cfg.accountType || "", accountNumber: cfg.accountNumber || "", bankEmail: cfg.bankEmail || "" } }, 201);
+  }
+
   if (path === "site-images" && req.method === "GET") {
     const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key=?").bind("site_images").first();
     let images = {};
@@ -116,6 +153,17 @@ export async function onRequest(context) {
       { error: "Debes iniciar sesión como administrador" },
       401
     );
+  }
+
+  if (path === "store-config" && req.method === "PUT") {
+    let body = {};
+    try { body = await req.json(); } catch { return json({ error: "JSON inválido" }, 400); }
+    const fields = ["bankName","accountHolder","taxId","accountType","accountNumber","bankEmail"];
+    const config = {};
+    for (const field of fields) config[field] = typeof body[field] === "string" ? body[field].trim().slice(0,200) : "";
+    await env.DB.prepare("INSERT INTO site_settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+      .bind("store_config", JSON.stringify(config)).run();
+    return json({ ok: true, config });
   }
 
   if (path === "gallery" && req.method === "POST") {
