@@ -19,3 +19,12 @@ CREATE TABLE IF NOT EXISTS site_settings (
  key TEXT PRIMARY KEY,
  value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS site_visitors (
+ visitor_id TEXT PRIMARY KEY,
+ first_seen INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS site_visits (
+ visit_id TEXT PRIMARY KEY,
+ visitor_id TEXT NOT NULL,
+ visited_at INTEGER NOT NULL
+);
