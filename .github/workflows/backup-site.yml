@@ -40,6 +40,15 @@ jobs:
           cd ..
           sha256sum "EmanuelDetail-backup-${GITHUB_SHA}.zip" > "EmanuelDetail-backup-${GITHUB_SHA}.sha256"
 
+      - name: Verificar integridad y contenido del respaldo
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -t "EmanuelDetail-backup-${GITHUB_SHA}.zip"
+          sha256sum --check "EmanuelDetail-backup-${GITHUB_SHA}.sha256"
+          unzip -Z1 "EmanuelDetail-backup-${GITHUB_SHA}.zip" | grep -Fxq "public/index.html"
+          unzip -Z1 "EmanuelDetail-backup-${GITHUB_SHA}.zip" | grep -Fxq "BACKUP-RECUPERACION.md"
+
       - name: Publicar artefactos descargables
         uses: actions/upload-artifact@v4
         with:
