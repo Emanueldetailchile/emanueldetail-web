@@ -2,8 +2,8 @@
 
 Panel independiente de accesos comerciales. No modificar el sitio público.
 
-## Requisitos de despliegue
+## Seguridad
 
-Configurar en Cloudflare Pages los secretos `PANEL_PASSWORD` y `SESSION_SECRET` antes de publicar. `SESSION_SECRET` debe ser aleatorio, largo y privado. No incluir secretos en el repositorio. La aplicación bloquea el panel si los secretos no están configurados.
+Los secretos `PANEL_PASSWORD` y `SESSION_SECRET` están configurados como secretos de entorno en Cloudflare Pages; no están almacenados en el repositorio. El panel bloquea el acceso si faltan.
 
 El panel solo agrupa enlaces; no implica conexión de API ni sincronización de mensajes.
