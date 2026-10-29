@@ -6,34 +6,37 @@
 <style>
 :root{color-scheme:dark;--bg:#101010;--panel:#191919;--line:#343434;--gold:#d7b46a;--muted:#b9b9b9}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#29231a 0,#101010 55%);font:16px system-ui,-apple-system,Segoe UI,sans-serif;color:#f7f4ee;min-height:100vh}
-header{padding:24px 18px 14px;max-width:980px;margin:auto;display:flex;align-items:center;gap:14px}
-.logo{width:48px;height:48px;border:1px solid var(--gold);border-radius:14px;display:grid;place-items:center;color:var(--gold);font-weight:800;letter-spacing:-1px}
-h1{font-size:clamp(22px,4vw,30px);margin:0}header p{margin:4px 0 0;color:var(--muted);font-size:14px}
-main{max-width:980px;margin:auto;padding:10px 18px 42px}.notice{border:1px solid #51442a;background:#211d15;color:#e8d8b4;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:22px}
+header{padding:24px 18px 14px;max-width:980px;margin:auto;display:flex;align-items:center;gap:14px}.logo{width:48px;height:48px;border:1px solid var(--gold);border-radius:14px;display:grid;place-items:center;color:var(--gold);font-weight:800;letter-spacing:-1px}
+h1{font-size:clamp(22px,4vw,30px);margin:0}header p{margin:4px 0 0;color:var(--muted);font-size:14px}main{max-width:980px;margin:auto;padding:10px 18px 42px}
+.notice{border:1px solid #51442a;background:#211d15;color:#e8d8b4;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:22px}
 h2{font-size:16px;margin:26px 0 12px;color:var(--gold);letter-spacing:.04em;text-transform:uppercase}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}
 a.card{display:block;text-decoration:none;color:inherit;background:linear-gradient(145deg,#202020,#171717);border:1px solid var(--line);border-radius:16px;padding:18px;transition:border-color .15s,transform .15s;min-height:118px}
 a.card:hover,a.card:focus{border-color:var(--gold);transform:translateY(-1px);outline:none}.card .icon{font-size:22px;margin-bottom:12px}.card strong{display:block;font-size:16px}.card span{display:block;color:var(--muted);font-size:13px;line-height:1.45;margin-top:6px}.tag{display:inline-block!important;color:var(--gold)!important;font-size:11px!important;letter-spacing:.08em;text-transform:uppercase;margin-top:10px!important}
 footer{color:#888;font-size:12px;line-height:1.5;margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
-button{margin-top:20px;border:1px solid #555;background:#242424;color:#eee;border-radius:9px;padding:10px 14px;font-size:14px;cursor:pointer}
 </style>
 </head>
 <body>
-<header><div class="logo">ED</div><div><h1>EmanuelDetail</h1><p>Panel de accesos comerciales</p></div></header>
+<header><div class="logo">ED</div><div><h1>EmanuelDetail</h1><p>Panel privado de accesos comerciales</p></div></header>
 <main>
-<div class="notice"><strong>Accesos separados.</strong> Este panel no cambia tus cuentas ni sus permisos. Los dos botones de Marketplace abren Facebook por separado; si el navegador usa una sola sesión, puede que debas cambiar de perfil dentro de Facebook.</div>
+<div class="notice"><strong>Accesos separados.</strong> Este panel no cambia tus cuentas ni sus permisos. Los dos botones de Marketplace abren Facebook; comprueba el perfil activo y cambia de cuenta dentro de Facebook si es necesario.</div>
 <h2>Marketplace</h2>
 <div class="grid">
 <a class="card" href="https://www.facebook.com/marketplace/" target="_blank" rel="noopener noreferrer"><div class="icon">🛍️</div><strong>Marketplace · Cuenta 1</strong><span>Abrir Marketplace en una pestaña nueva.</span><span class="tag">Acceso independiente</span></a>
-<a class="card" href="https://www.facebook.com/marketplace/" target="_blank" rel="noopener noreferrer"><div class="icon">🏷️</div><strong>Marketplace · Cuenta 2</strong><span>Abrir Marketplace en otra pestaña y comprobar el perfil activo.</span><span class="tag">Acceso independiente</span></a>
+<a class="card" href="https://www.facebook.com/marketplace/" target="_blank" rel="noopener noreferrer"><div class="icon">🏷️</div><strong>Marketplace · Cuenta 2</strong><span>Abrir Marketplace y comprobar el perfil activo.</span><span class="tag">Acceso independiente</span></a>
 </div>
-<h2>Redes y canales de empresa</h2>
+<h2>Administración de Meta</h2>
 <div class="grid">
-<a class="card" href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer"><div class="icon">◈</div><strong>Meta Business Suite</strong><span>Administrar activos comerciales y revisar mensajes disponibles.</span></a>
+<a class="card" href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer"><div class="icon">◈</div><strong>Meta Business Suite</strong><span>Gestionar páginas, contenido y mensajes disponibles según los permisos de tu cuenta.</span></a>
 <a class="card" href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer"><div class="icon">f</div><strong>Facebook</strong><span>Abrir Facebook y comprobar el perfil activo.</span></a>
-<a class="card" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer"><div class="icon">◎</div><strong>Instagram</strong><span>Acceder a la cuenta de Instagram.</span></a>
+<a class="card" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer"><div class="icon">◎</div><strong>Instagram</strong><span>Acceder a la cuenta de empresa.</span></a>
 <a class="card" href="https://web.whatsapp.com/" target="_blank" rel="noopener noreferrer"><div class="icon">◉</div><strong>WhatsApp Web</strong><span>Acceder a WhatsApp desde un navegador compatible.</span></a>
-<a class="card" href="https://app.metricool.com/" target="_blank" rel="noopener noreferrer"><div class="icon">▦</div><strong>Metricool</strong><span>Planificación y análisis, una vez autorizada la conexión.</span></a>
 </div>
-<footer>Versión inicial de accesos comerciales. Los enlaces no significan que las cuentas estén conectadas ni que la mensajería esté centralizada. Las integraciones oficiales se habilitarán por separado tras autorización. No se almacenan contraseñas de redes sociales en este panel.</footer>
+<h2>Marketing y estadísticas</h2>
+<div class="grid">
+<a class="card" href="https://app.metricool.com/" target="_blank" rel="noopener noreferrer"><div class="icon">▦</div><strong>Metricool · Planificación</strong><span>Programar y organizar publicaciones una vez conectados los perfiles.</span><span class="tag">Herramienta externa</span></a>
+<a class="card" href="https://business.facebook.com/latest/insights/" target="_blank" rel="noopener noreferrer"><div class="icon">▥</div><strong>Estadísticas de Meta</strong><span>Consultar métricas disponibles para los activos autorizados.</span><span class="tag">Requiere permisos</span></a>
+<a class="card" href="https://business.facebook.com/latest/inbox/" target="_blank" rel="noopener noreferrer"><div class="icon">✉</div><strong>Bandeja de mensajes</strong><span>Abrir la bandeja de Meta para revisar conversaciones que estén conectadas.</span><span class="tag">Requiere configuración</span></a>
+</div>
+<footer>Panel de accesos, no una integración API. Los botones abren las plataformas oficiales; la publicación, mensajería y estadísticas dependen de las conexiones y permisos de cada servicio. No se guardan aquí contraseñas de redes sociales.</footer>
 </main>
 </body></html>
