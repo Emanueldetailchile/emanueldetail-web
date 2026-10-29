@@ -1,0 +1,6 @@
+const enc = new TextEncoder();
+function b64u(bytes){let s='';for(const b of bytes)s+=String.fromCharCode(b);return btoa(s).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_')}
+function fromB64u(s){s=s.replace(/-/g,'+').replace(/_/g,'/');s+='='.repeat((4-s.length%4)%4);return Uint8Array.from(atob(s),c=>c.charCodeAt(0))}
+async function key(env){return crypto.subtle.importKey('raw',enc.encode(env.SESSION_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign','verify'])}
+async function valid(req,env){try{if(!env.SESSION_SECRET)return false;const raw=(req.headers.get('Cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('ed_session='))?.slice(11);if(!raw)return false;const [p,s]=raw.split('.');if(!p||!s)return false;const k=await key(env);if(!await crypto.subtle.verify('HMAC',k,fromB64u(s),enc.encode(p)))return false;const data=JSON.parse(new TextDecoder().decode(fromB64u(p)));return data.exp>Date.now()}catch(_){return false}}
+export async function onRequest({request,env,next}){const url=new URL(request.url);if(url.pathname==='/login.html'||url.pathname==='/api/login'||url.pathname==='/api/logout')return next();if(await valid(request,env))return next();return Response.redirect(new URL('/login.html',url),302)}
