@@ -236,21 +236,56 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     return json(results);
   }
 
+  if (path === "customer/content" && req.method === "GET") {
+    const { results: gallery = [] } = await env.DB.prepare("SELECT id,image_url,caption,created_at FROM gallery ORDER BY id DESC LIMIT 60").all();
+    const imageRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key=?").bind("site_images").first();
+    let siteImages = {}; try { siteImages = JSON.parse(imageRow?.value || "{}"); } catch { siteImages = {}; }
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const today = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    const { results: promotions = [] } = await env.DB.prepare("SELECT id,title,description,price,starts_at,ends_at,max_uses,used_count,code FROM promotions WHERE status='activa' AND (starts_at IS NULL OR starts_at='' OR starts_at<=?) AND (ends_at IS NULL OR ends_at='' OR ends_at>=?) AND (max_uses IS NULL OR used_count<max_uses) ORDER BY created_at DESC").bind(today,today).all();
+    const services = [
+      {id:"pack-tapiz",name:"Pack de limpieza de tapiz",price:30000,referencePrice:35000,duration:"1,5 a 2 horas",description:"Cielo, asientos delanteros y traseros, piso y alfombras."},
+      {id:"full-interior",name:"Full interior",price:50000,duration:"3 a 5 horas",description:"Cielo, asientos, piso, maletero, puertas, tablero, plásticos y ductos de ventilación."},
+      {id:"motor-vapor",name:"Limpieza superficial de motor a vapor",price:20000,duration:"1 a 1,5 horas",description:"Limpieza superficial con vapor. No contempla desarme del motor."}
+    ];
+    return json({ok:true,services,gallery,promotions,siteImages,location:"San Ramón, Santiago",hours:{mondayToThursday:"10:00–18:30",friday:"10:00–16:00"},bookingPolicy:"Toda solicitud queda pendiente de confirmación humana."});
+  }
+
   // Reservas: la solicitud pública queda pendiente; solo el administrador puede confirmarla.
   if (path === "bookings" && req.method === "POST") {
     let b = {};
     try { b = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
     const name = typeof b.name === "string" ? b.name.trim().slice(0,120) : "";
     const phone = typeof b.phone === "string" ? b.phone.trim().slice(0,40) : "";
-    const service = typeof b.service === "string" ? b.service.trim().slice(0,160) : "";
-    const commune = typeof b.commune === "string" ? b.commune.trim().slice(0,80) : "";
+    const service = typeof b.service === "string" ? b.service.trim() : "";
+    const commune = typeof b.commune === "string" ? b.commune.trim().slice(0,80) : "San Ramón";
     const date = typeof b.date === "string" ? b.date : "";
     const start = typeof b.start === "string" ? b.start : "";
-    if (!name || !phone || !service || !commune || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, comuna, fecha y hora." }, 400);
+    const serviceDurations = {"Pack de limpieza de tapiz":120,"Full interior":300,"Limpieza superficial de motor a vapor":90};
+    if (!name || !phone || !serviceDurations[service] || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, fecha y hora válida." }, 400);
+    const dateObj = new Date(date + "T12:00:00Z");
+    if (Number.isNaN(dateObj.getTime())) return json({error:"Fecha no válida."},400);
+    const weekday = dateObj.getUTCDay();
+    if (weekday === 0 || weekday === 6) return json({error:"No atendemos sábados ni domingos."},400);
+    const [hh,mm] = start.split(":").map(Number);
+    const startMinutes = hh*60+mm, endMinutes = startMinutes+serviceDurations[service];
+    const closing = weekday === 5 ? 16*60 : 18*60+30;
+    if ((weekday >= 1 && weekday <= 4 && startMinutes < 10*60) || (weekday === 5 && startMinutes < 10*60) || endMinutes > closing) return json({error:"Ese horario queda fuera de nuestra jornada o no alcanza para completar el servicio."},400);
+    const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    if (date < today) return json({error:"No puedes solicitar una fecha pasada."},400);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS service_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, service TEXT NOT NULL, commune TEXT NOT NULL, booking_date TEXT NOT NULL, start_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pendiente', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const {results: existing=[]} = await env.DB.prepare("SELECT start_time,service FROM service_bookings WHERE booking_date=? AND status IN ('pendiente','confirmada')").bind(date).all();
+    if (existing.length >= 2) return json({error:"Ese día ya alcanzó el máximo de solicitudes/servicios. Escríbenos para revisar otra fecha."},409);
+    const overlaps = existing.some(item => {
+      const [eh,em] = String(item.start_time).split(":").map(Number);
+      const duration = serviceDurations[item.service] || 120;
+      const a=eh*60+em, z=a+duration;
+      return startMinutes < z && endMinutes > a;
+    });
+    if (overlaps) return json({error:"Ese horario se cruza con otro servicio solicitado. Elige otra hora."},409);
     const now = Date.now();
     const result = await env.DB.prepare("INSERT INTO service_bookings(name,phone,service,commune,booking_date,start_time,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente',?,?)").bind(name,phone,service,commune,date,start,String(b.notes||"").slice(0,700),now,now).run();
-    return json({ ok: true, id: result.meta.last_row_id, status: "pendiente", message: "Solicitud recibida. La reserva queda pendiente de confirmación." }, 201);
+    return json({ ok: true, id: result.meta.last_row_id, status: "pendiente", message: "Solicitud recibida. La hora queda pendiente de confirmación por EmanuelDetail." }, 201);
   }
 
   if (path === "promotions" && req.method === "GET") {
