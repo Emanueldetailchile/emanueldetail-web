@@ -28,3 +28,16 @@ CREATE TABLE IF NOT EXISTS site_visits (
  visitor_id TEXT NOT NULL,
  visited_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS marketing_leads (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ name TEXT NOT NULL,
+ contact TEXT NOT NULL DEFAULT '',
+ source TEXT NOT NULL,
+ service TEXT NOT NULL DEFAULT '',
+ notes TEXT NOT NULL DEFAULT '',
+ status TEXT NOT NULL DEFAULT 'nuevo',
+ created_at INTEGER NOT NULL,
+ updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_marketing_leads_updated ON marketing_leads(updated_at DESC);
