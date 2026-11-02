@@ -404,14 +404,23 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     const commune = typeof b.commune === "string" ? b.commune.trim().slice(0,80) : "San Ramón";
     const date = typeof b.date === "string" ? b.date : "";
     const start = typeof b.start === "string" ? b.start : "";
-    const serviceDurations = {"Pack de limpieza de tapiz":120,"Full interior":300,"Limpieza superficial de motor a vapor":90};
-    if (!name || !phone || !serviceDurations[service] || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, fecha y hora válida." }, 400);
+    const notes = ("Origen: " + (b.source === "app" ? "App clientes" : "Web") + ". " + String(b.notes || "")).slice(0,700);
+    const requestedDuration = (serviceName, bookingNotes) => {
+      const heavy = /estado:\s*heavy/i.test(bookingNotes);
+      const large = /Vehículo:\s*large/i.test(bookingNotes);
+      if (serviceName === "Pack de limpieza de tapiz") return heavy ? 120 : 90;
+      if (serviceName === "Full interior") return large ? (heavy ? 300 : 240) : 180;
+      if (serviceName === "Limpieza superficial de motor a vapor") return heavy ? 90 : 60;
+      return 0;
+    };
+    const duration = requestedDuration(service, notes);
+    if (!name || !phone || !duration || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, fecha y hora válida." }, 400);
     const dateObj = new Date(date + "T12:00:00Z");
     if (Number.isNaN(dateObj.getTime()) || dateObj.toISOString().slice(0,10) !== date) return json({error:"Fecha no válida."},400);
     const weekday = dateObj.getUTCDay();
     if (weekday === 0 || weekday === 6) return json({error:"No atendemos sábados ni domingos."},400);
     const [hh,mm] = start.split(":").map(Number);
-    const startMinutes = hh*60+mm, endMinutes = startMinutes+serviceDurations[service];
+    const startMinutes = hh*60+mm, endMinutes = startMinutes+duration;
     const closing = weekday === 5 ? 16*60 : 18*60+30;
     if ((weekday >= 1 && weekday <= 4 && startMinutes < 10*60) || (weekday === 5 && startMinutes < 10*60) || endMinutes > closing) return json({error:"Ese horario queda fuera de nuestra jornada o no alcanza para completar el servicio."},400);
     const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
@@ -421,14 +430,13 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     if (existing.length >= 2) return json({error:"Ese día ya alcanzó el máximo de solicitudes/servicios. Escríbenos para revisar otra fecha."},409);
     const overlaps = existing.some(item => {
       const [eh,em] = String(item.start_time).split(":").map(Number);
-      const duration = serviceDurations[item.service] || 120;
-      const a=eh*60+em, z=a+duration;
+      const priorDuration = requestedDuration(item.service, item.notes || "") || 120;
+      const a=eh*60+em, z=a+priorDuration;
       return startMinutes < z && endMinutes > a;
     });
     if (overlaps) return json({error:"Ese horario se cruza con otro servicio solicitado. Elige otra hora."},409);
     const now = Date.now();
     const source = b.source === "app" ? "App clientes" : "Web";
-    const notes = ("Origen: " + source + ". " + String(b.notes || "")).slice(0,700);
     const result = await env.DB.prepare("INSERT INTO service_bookings(name,phone,service,commune,booking_date,start_time,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente',?,?)").bind(name,phone,service,commune,date,start,notes,now,now).run();
     return json({ ok: true, id: result.meta.last_row_id, status: "pendiente", message: "Solicitud recibida. La hora queda pendiente de confirmación por EmanuelDetail." }, 201);
   }
