@@ -47,6 +47,11 @@ button:disabled{opacity:.6;cursor:wait}
 <button id="loginbtn">Entrar</button>
 <p class="small">El primer ingreso exige crear una contraseña definitiva de al menos 12 caracteres. La clave provisional dejará de funcionar.</p>
 <p class="small" id="loginStatus" role="status"></p>
+<button class="secondary" id="forgotSitePassword" type="button">Olvidé mi contraseña</button>
+<div id="siteForgotPane" class="hidden"><label>Correo de recuperación</label><input id="siteRecoveryEmail" type="email" value="emanueldetailchile@gmail.com"><button id="siteRequestReset" type="button">Enviar enlace de recuperación</button><p class="small" id="siteRecoveryStatus"></p></div>
+</section>
+<section class="card hidden" id="siteResetPane">
+<h2>Restablecer contraseña</h2><label>Nueva contraseña (mínimo 12 caracteres)</label><input id="siteResetPassword" type="password"><label>Repite la nueva contraseña</label><input id="siteResetConfirm" type="password"><button id="siteDoReset" type="button">Guardar nueva contraseña</button><p class="small" id="siteResetStatus"></p>
 </section>
 <section class="card hidden" id="changePassword">
 <h2>Configura tu contraseña definitiva</h2>
@@ -231,8 +236,9 @@ $('site-images').addEventListener('click', async event => {
 });
 
 function show() {
-  $('login').classList.toggle('hidden', authenticated || mustChange);
+  $('login').classList.toggle('hidden', authenticated || mustChange || !!new URLSearchParams(location.search).get('reset'));
   $('changePassword').classList.toggle('hidden', !mustChange);
+  $('siteResetPane').classList.toggle('hidden', !new URLSearchParams(location.search).get('reset'));
   $('app').classList.toggle('hidden', !authenticated || mustChange);
   if (authenticated && !mustChange) refresh();
 }
@@ -271,11 +277,34 @@ async function saveNewPassword() {
   finally { $('saveNewPassword').disabled = false; }
 }
 async function restoreSession() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('reset')) { authenticated = false; mustChange = false; show(); return; }
   try {
     const r = await fetch('/api/auth/me?scope=site',{credentials:'same-origin'});
     const d = await r.json(); authenticated = !!d.loggedIn; mustChange = !!d.mustChange; show();
   } catch { authenticated = false; mustChange = false; show(); }
 }
+async function requestSiteReset() {
+  $('siteRecoveryStatus').textContent = 'Solicitando enlace…';
+  try {
+    const r = await fetch('/api/auth/request-reset',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({scope:'site',email:$('siteRecoveryEmail').value.trim()})});
+    const d = await r.json(); if(!r.ok) throw Error(d.error || 'No se pudo solicitar el enlace.');
+    $('siteRecoveryStatus').textContent = d.message || 'Revisa tu correo.';
+  } catch(e) { $('siteRecoveryStatus').textContent = e.message; }
+}
+async function submitSiteReset() {
+  const params=new URLSearchParams(location.search),token=params.get('reset'),password=$('siteResetPassword').value,confirm=$('siteResetConfirm').value;
+  if(password.length<12||password!==confirm){$('siteResetStatus').textContent='Las contraseñas deben coincidir y tener al menos 12 caracteres.';return}
+  try {
+    const r=await fetch('/api/auth/reset-password',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({scope:'site',token,password})});
+    const d=await r.json();if(!r.ok)throw Error(d.error||'No se pudo restablecer.');
+    $('siteResetStatus').textContent='Contraseña actualizada. Vuelve a iniciar sesión.';
+    history.replaceState({},'',location.pathname);$('siteResetPassword').value='';$('siteResetConfirm').value='';show();
+  } catch(e){$('siteResetStatus').textContent=e.message}
+}
+$('forgotSitePassword').addEventListener('click',()=>$('siteForgotPane').classList.toggle('hidden'));
+$('siteRequestReset').addEventListener('click',requestSiteReset);
+$('siteDoReset').addEventListener('click',submitSiteReset);
 $('loginbtn').addEventListener('click',login);
 $('saveNewPassword').addEventListener('click',saveNewPassword);
 
