@@ -11,7 +11,7 @@ const json = (data, status = 200) =>
 function authorized(req, env, scope = "site") {
   const h = req.headers.get("Authorization") || "";
   const key = scope === "marketing" ? "MARKETING_ADMIN_TOKEN" : "SITE_ADMIN_TOKEN";
-  const expected = String(env[key] || env.ADMIN_TOKEN || "").trim();
+  const expected = String(env[key] || "").trim();
   return !!expected && h === `Bearer ${expected}`;
 }
 
@@ -25,9 +25,9 @@ export async function onRequest(context) {
       ok: true,
       db: !!env.DB,
       images: !!env.IMAGES,
-      adminConfigured: !!(env.ADMIN_TOKEN || env.SITE_ADMIN_TOKEN || env.MARKETING_ADMIN_TOKEN),
-      siteAdminConfigured: !!(env.SITE_ADMIN_TOKEN || env.ADMIN_TOKEN),
-      marketingAdminConfigured: !!(env.MARKETING_ADMIN_TOKEN || env.ADMIN_TOKEN),
+      adminConfigured: !!(env.SITE_ADMIN_TOKEN && env.MARKETING_ADMIN_TOKEN),
+      siteAdminConfigured: !!env.SITE_ADMIN_TOKEN,
+      marketingAdminConfigured: !!env.MARKETING_ADMIN_TOKEN,
     });
   }
 
