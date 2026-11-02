@@ -175,33 +175,7 @@ export async function onRequest(context) {
   }
 
   if (path === "login" && req.method === "POST") {
-    let b = {};
-    try {
-      b = await req.json();
-    } catch {
-      return json({ error: "Solicitud inválida" }, 400);
-    }
-
-    const received = typeof b.token === "string" ? b.token.trim() : "";
-    const scope = b.scope === "marketing" ? "marketing" : "site";
-    const key = scope === "marketing" ? "MARKETING_ADMIN_TOKEN" : "SITE_ADMIN_TOKEN";
-    const expected = String(env[key] || "").trim();
-
-    if (!expected) {
-      return json(
-        {
-          error:
-            "Falta configurar la clave de acceso correspondiente en Cloudflare Pages > Settings > Variables and Secrets",
-        },
-        503
-      );
-    }
-
-    if (received && received === expected) {
-      return json({ ok: true, scope });
-    }
-
-    return json({ error: "Clave incorrecta" }, 401);
+    return json({error:"El acceso anterior fue retirado. Usa el inicio de sesión seguro."},410);
   }
 
   if (path === "customer/chat" && req.method === "POST") {
