@@ -85,7 +85,7 @@ async function syncMarketingPosts(){
    if(saved.post)byId.set(saved.post.id,saved.post);
   }
  }
- posts=[...byId.values()].sort((a,b)=>(Date.parse(b.updatedAt||b.createdAt)||0)-(Date.parse(a.updatedAt||a.createdAt)||0));
+ posts=[...byId.values()].map(server=>({...server,photo:posts.find(local=>local.id===server.id)?.photo||''})).sort((a,b)=>(Date.parse(b.updatedAt||b.createdAt)||0)-(Date.parse(a.updatedAt||a.createdAt)||0));
  try{localStorage.setItem(KEY,JSON.stringify(posts))}catch{}
  renderStats();renderQueue();
 }
