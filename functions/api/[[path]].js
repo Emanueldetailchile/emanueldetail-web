@@ -269,7 +269,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     const serviceDurations = {"Pack de limpieza de tapiz":120,"Full interior":300,"Limpieza superficial de motor a vapor":90};
     if (!name || !phone || !serviceDurations[service] || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, fecha y hora válida." }, 400);
     const dateObj = new Date(date + "T12:00:00Z");
-    if (Number.isNaN(dateObj.getTime())) return json({error:"Fecha no válida."},400);
+    if (Number.isNaN(dateObj.getTime()) || dateObj.toISOString().slice(0,10) !== date) return json({error:"Fecha no válida."},400);
     const weekday = dateObj.getUTCDay();
     if (weekday === 0 || weekday === 6) return json({error:"No atendemos sábados ni domingos."},400);
     const [hh,mm] = start.split(":").map(Number);
@@ -289,7 +289,9 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     });
     if (overlaps) return json({error:"Ese horario se cruza con otro servicio solicitado. Elige otra hora."},409);
     const now = Date.now();
-    const result = await env.DB.prepare("INSERT INTO service_bookings(name,phone,service,commune,booking_date,start_time,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente',?,?)").bind(name,phone,service,commune,date,start,String(b.notes||"").slice(0,700),now,now).run();
+    const source = b.source === "app" ? "App clientes" : "Web";
+    const notes = ("Origen: " + source + ". " + String(b.notes || "")).slice(0,700);
+    const result = await env.DB.prepare("INSERT INTO service_bookings(name,phone,service,commune,booking_date,start_time,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente',?,?)").bind(name,phone,service,commune,date,start,notes,now,now).run();
     return json({ ok: true, id: result.meta.last_row_id, status: "pendiente", message: "Solicitud recibida. La hora queda pendiente de confirmación por EmanuelDetail." }, 201);
   }
 
