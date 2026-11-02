@@ -1,24 +1,166 @@
 
-const json = (data, status = 200) =>
+const json = (data, status = 200, extraHeaders = {}) =>
   new Response(JSON.stringify(data), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
+      ...extraHeaders,
     },
   });
 
-function authorized(req, env, scope = "site") {
-  const h = req.headers.get("Authorization") || "";
-  const key = scope === "marketing" ? "MARKETING_ADMIN_TOKEN" : "SITE_ADMIN_TOKEN";
-  const expected = String(env[key] || "").trim();
-  return !!expected && h === `Bearer ${expected}`;
+function cookieName(scope) { return scope === "marketing" ? "ed_marketing_session" : "ed_site_session"; }
+function cookieValue(req, name) {
+  const raw = req.headers.get("Cookie") || "";
+  for (const part of raw.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return rest.join("=");
+  }
+  return "";
+}
+function bytesHex(bytes) { return Array.from(new Uint8Array(bytes)).map(x => x.toString(16).padStart(2,"0")).join(""); }
+async function sha256(value) { return bytesHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))); }
+function randomToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+async function passwordHash(password, saltHex) {
+  const salt = Uint8Array.from(saltHex.match(/.{2}/g).map(x => parseInt(x,16)));
+  const key = await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:210000,hash:"SHA-256"},key,256);
+  return bytesHex(bits);
+}
+async function ensureAuthTables(env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_accounts (scope TEXT PRIMARY KEY, email TEXT NOT NULL, password_hash TEXT NOT NULL DEFAULT '', salt TEXT NOT NULL DEFAULT '', must_change INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_sessions (token_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_reset_tokens (token_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, expires_at INTEGER NOT NULL, used_at INTEGER, created_at INTEGER NOT NULL)").run();
+}
+async function sessionInfo(req, env, scope) {
+  if (!env.DB) return null;
+  await ensureAuthTables(env);
+  const token = cookieValue(req,cookieName(scope));
+  if (!token) return null;
+  const tokenHash = await sha256(token), now = Date.now();
+  const session = await env.DB.prepare("SELECT token_hash FROM admin_sessions WHERE token_hash=? AND scope=? AND expires_at>?").bind(tokenHash,scope,now).first();
+  if (!session) return null;
+  const account = await env.DB.prepare("SELECT must_change FROM admin_accounts WHERE scope=?").bind(scope).first();
+  if (!account) return null;
+  return {scope,mustChange:Number(account.must_change)===1};
+}
+async function authorized(req, env, scope = "site") {
+  const session = await sessionInfo(req,env,scope);
+  return !!session && !session.mustChange;
+}
+async function issueSession(env,scope) {
+  const token = randomToken(), tokenHash = await sha256(token), now = Date.now();
+  await env.DB.prepare("INSERT INTO admin_sessions(token_hash,scope,expires_at,created_at) VALUES(?,?,?,?)").bind(tokenHash,scope,now+8*60*60*1000,now).run();
+  return {token,cookie:\`\${cookieName(scope)}=\${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=28800\`};
+}
+function clearSessionCookie(scope) {
+  return \`\${cookieName(scope)}=; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=0\`;
 }
 
 export async function onRequest(context) {
   const { request: req, env } = context;
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api\/?/, "");
+
+
+  if (path.startsWith("auth/")) {
+    if (!env.DB) return json({error:"Base de datos no disponible."},503);
+    await ensureAuthTables(env);
+    const body = async () => { try { return await req.json(); } catch { return null; } };
+    if (path === "auth/me" && req.method === "GET") {
+      const scope = url.searchParams.get("scope") === "marketing" ? "marketing" : "site";
+      const info = await sessionInfo(req,env,scope);
+      return json({ok:true,loggedIn:!!info,mustChange:!!info?.mustChange,scope});
+    }
+    if (path === "auth/login" && req.method === "POST") {
+      const b = await body();
+      if (!b) return json({error:"Solicitud inválida."},400);
+      const scope = b.scope === "marketing" ? "marketing" : "site";
+      const password = typeof b.password === "string" ? b.password : "";
+      if (!password || password.length > 200) return json({error:"Ingresa la clave temporal o tu contraseña."},400);
+      const bootstrapName = scope === "marketing" ? "MARKETING_ADMIN_BOOTSTRAP" : "SITE_ADMIN_BOOTSTRAP";
+      const bootstrap = String(env[bootstrapName] || "");
+      const account = await env.DB.prepare("SELECT scope,email,password_hash,salt,must_change FROM admin_accounts WHERE scope=?").bind(scope).first();
+      let mustChange = false;
+      if (!account) {
+        if (!bootstrap) return json({error:"Falta configurar la clave provisional segura en Cloudflare Preview."},503);
+        if (password !== bootstrap) return json({error:"Clave incorrecta."},401);
+        const email = String(env.ADMIN_RECOVERY_EMAIL || "emanueldetailchile@gmail.com").toLowerCase();
+        const now = Date.now();
+        await env.DB.prepare("INSERT INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?, '', '',1,?,?)").bind(scope,email,now,now).run();
+        mustChange = true;
+      } else if (Number(account.must_change) === 1) {
+        if (!bootstrap || password !== bootstrap) return json({error:"Debes usar la clave provisional para completar la configuración inicial."},401);
+        mustChange = true;
+      } else {
+        const valid = account.salt && account.password_hash && await passwordHash(password,account.salt) === account.password_hash;
+        if (!valid) return json({error:"Clave incorrecta."},401);
+      }
+      const issued = await issueSession(env,scope);
+      return json({ok:true,scope,mustChange},200,{"Set-Cookie":issued.cookie});
+    }
+    if (path === "auth/change-password" && req.method === "POST") {
+      const b = await body();
+      const scope = b?.scope === "marketing" ? "marketing" : "site";
+      const info = await sessionInfo(req,env,scope);
+      if (!info || !info.mustChange) return json({error:"No hay una configuración inicial pendiente."},401);
+      const password = typeof b?.password === "string" ? b.password : "";
+      if (password.length < 12 || password.length > 200) return json({error:"La nueva contraseña debe tener al menos 12 caracteres."},400);
+      const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
+      const hash = await passwordHash(password,salt), now = Date.now();
+      await env.DB.prepare("UPDATE admin_accounts SET password_hash=?,salt=?,must_change=0,updated_at=? WHERE scope=?").bind(hash,salt,now,scope).run();
+      return json({ok:true,message:"Contraseña definitiva guardada. La clave provisional dejó de servir."});
+    }
+    if (path === "auth/logout" && req.method === "POST") {
+      const b = await body();
+      const scope = b?.scope === "marketing" ? "marketing" : "site";
+      const token = cookieValue(req,cookieName(scope));
+      if (token) await env.DB.prepare("DELETE FROM admin_sessions WHERE token_hash=? AND scope=?").bind(await sha256(token),scope).run();
+      return json({ok:true},200,{"Set-Cookie":clearSessionCookie(scope)});
+    }
+    if (path === "auth/request-reset" && req.method === "POST") {
+      const b = await body();
+      const scope = b?.scope === "marketing" ? "marketing" : "site";
+      const email = String(b?.email || "").trim().toLowerCase();
+      const recoveryEmail = String(env.ADMIN_RECOVERY_EMAIL || "emanueldetailchile@gmail.com").toLowerCase();
+      if (email !== recoveryEmail) return json({ok:true,message:"Si los datos corresponden, recibirás instrucciones en el correo registrado."});
+      if (!env.RESEND_API_KEY) return json({error:"La recuperación por correo aún no está habilitada. Falta configurar RESEND_API_KEY en Cloudflare Preview."},503);
+      const account = await env.DB.prepare("SELECT scope FROM admin_accounts WHERE scope=? AND email=?").bind(scope,recoveryEmail).first();
+      if (!account) return json({ok:true,message:"Si los datos corresponden, recibirás instrucciones en el correo registrado."});
+      const rawToken = randomToken(), tokenHash = await sha256(rawToken), now = Date.now();
+      await env.DB.prepare("DELETE FROM admin_reset_tokens WHERE scope=? OR expires_at<?").bind(scope,now).run();
+      await env.DB.prepare("INSERT INTO admin_reset_tokens(token_hash,scope,expires_at,used_at,created_at) VALUES(?,?,?,NULL,?)").bind(tokenHash,scope,now+20*60*1000,now).run();
+      const resetUrl = new URL(scope === "marketing" ? "/marketing/" : "/admin.html",url.origin);
+      resetUrl.searchParams.set("reset",rawToken);
+      resetUrl.searchParams.set("scope",scope);
+      const emailResponse = await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+env.RESEND_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({from:env.EMAIL_FROM || "onboarding@resend.dev",to:[recoveryEmail],subject:"Recuperar acceso EMANUELDETAIL",html:\`<p>Se solicitó restablecer el acceso de EMANUELDETAIL (\${scope}).</p><p><a href="\${resetUrl.toString()}">Crear una nueva contraseña</a></p><p>Este enlace vence en 20 minutos y solo puede usarse una vez. Si no solicitaste el cambio, ignora este mensaje.</p>\`})});
+      if (!emailResponse.ok) {
+        await env.DB.prepare("DELETE FROM admin_reset_tokens WHERE token_hash=?").bind(tokenHash).run();
+        return json({error:"No pudimos enviar el correo de recuperación. Revisa la configuración del proveedor de correo."},502);
+      }
+      return json({ok:true,message:"Si los datos corresponden, recibirás instrucciones en el correo registrado."});
+    }
+    if (path === "auth/reset-password" && req.method === "POST") {
+      const b = await body();
+      const scope = b?.scope === "marketing" ? "marketing" : "site";
+      const token = typeof b?.token === "string" ? b.token : "";
+      const password = typeof b?.password === "string" ? b.password : "";
+      if (!token || password.length < 12 || password.length > 200) return json({error:"Enlace o contraseña no válidos. La contraseña debe tener al menos 12 caracteres."},400);
+      const tokenHash = await sha256(token), now = Date.now();
+      const reset = await env.DB.prepare("SELECT token_hash FROM admin_reset_tokens WHERE token_hash=? AND scope=? AND expires_at>? AND used_at IS NULL").bind(tokenHash,scope,now).first();
+      if (!reset) return json({error:"El enlace venció o ya fue utilizado. Solicita uno nuevo."},400);
+      const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
+      const hash = await passwordHash(password,salt);
+      await env.DB.prepare("UPDATE admin_accounts SET password_hash=?,salt=?,must_change=0,updated_at=? WHERE scope=?").bind(hash,salt,now,scope).run();
+      await env.DB.prepare("UPDATE admin_reset_tokens SET used_at=? WHERE token_hash=?").bind(now,tokenHash).run();
+      await env.DB.prepare("DELETE FROM admin_sessions WHERE scope=?").bind(scope).run();
+      return json({ok:true,message:"Contraseña actualizada. Ya puedes iniciar sesión."});
+    }
+    return json({error:"Ruta de autenticación no encontrada."},404);
+  }
 
   if (path === "health" && req.method === "GET") {
     return json({
@@ -42,7 +184,7 @@ export async function onRequest(context) {
     const received = typeof b.token === "string" ? b.token.trim() : "";
     const scope = b.scope === "marketing" ? "marketing" : "site";
     const key = scope === "marketing" ? "MARKETING_ADMIN_TOKEN" : "SITE_ADMIN_TOKEN";
-    const expected = String(env[key] || env.ADMIN_TOKEN || "").trim();
+    const expected = String(env[key] || "").trim();
 
     if (!expected) {
       return json(
@@ -118,7 +260,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "marketing/ai-copy" && req.method === "POST") {
-    if (!authorized(req, env, "marketing")) return json({ error: "Autorización requerida. Inicia sesión en Marketing IA." }, 401);
+    if (!(await authorized(req, env, "marketing")) return json({ error: "Autorización requerida. Inicia sesión en Marketing IA." }, 401);
     if (!env.AI) return json({ error: "Falta activar el vínculo Workers AI llamado AI en Cloudflare Pages > Settings > Bindings. No se requiere API key." }, 503);
     let body = {};
     try { body = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
@@ -203,7 +345,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "site-images" && req.method === "PUT") {
-    if (!authorized(req, env)) {
+    if (!(await authorized(req, env, "site")) {
       return json({ error: "Debes iniciar sesión como administrador" }, 401);
     }
     let body = {};
@@ -298,7 +440,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   if (path === "promotions" && req.method === "GET") {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     try { await env.DB.prepare("ALTER TABLE promotions ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'").run(); } catch {}
-    if (authorized(req, env, "marketing")) {
+    if (await authorized(req, env, "marketing")) {
       const { results = [] } = await env.DB.prepare("SELECT * FROM promotions ORDER BY updated_at DESC LIMIT 200").all();
       return json(results);
     }
@@ -322,7 +464,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   const marketingPath = path === "bookings" || path.startsWith("bookings/") || path === "leads" || path.startsWith("leads/") || path === "promotions" || path.startsWith("promotions/");
-  if (!authorized(req, env, marketingPath ? "marketing" : "site")) {
+  if (!(await authorized(req, env, marketingPath ? "marketing" : "site")) {
     return json({ error: marketingPath ? "Debes iniciar sesión en Marketing IA." : "Debes iniciar sesión como administrador del sitio." }, 401);
   }
 
