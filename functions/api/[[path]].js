@@ -57,6 +57,49 @@ export async function onRequest(context) {
     return json({ error: "Clave incorrecta" }, 401);
   }
 
+  if (path === "customer/chat" && req.method === "POST") {
+    if (!env.AI || !env.DB) return json({ error: "El asistente no está disponible temporalmente. Escríbenos por WhatsApp al +56 9 3051 4998." }, 503);
+    let body = {};
+    try { body = await req.json(); } catch { return json({ error: "Mensaje no válido." }, 400); }
+    const message = typeof body.message === "string" ? body.message.trim().slice(0, 900) : "";
+    if (!message) return json({ error: "Escribe tu consulta para continuar." }, 400);
+    const history = Array.isArray(body.history) ? body.history.slice(-6).map(m => ({
+      role: m?.role === "assistant" ? "assistant" : "user",
+      content: typeof m?.content === "string" ? m.content.slice(0, 500) : ""
+    })).filter(m => m.content) : [];
+    try {
+      const ip = req.headers.get("CF-Connecting-IP") || "unknown";
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ip));
+      const ipKey = Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2,"0")).join("");
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS customer_ai_limits (ip_hash TEXT NOT NULL, created_at INTEGER NOT NULL)").run();
+      const now = Date.now();
+      await env.DB.prepare("DELETE FROM customer_ai_limits WHERE created_at < ?").bind(now - 60 * 60 * 1000).run();
+      const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM customer_ai_limits WHERE ip_hash=?").bind(ipKey).first();
+      if (Number(count?.n || 0) >= 12) return json({ error: "Por ahora alcanzaste el límite de consultas. Escríbenos por WhatsApp al +56 9 3051 4998." }, 429);
+      await env.DB.prepare("INSERT INTO customer_ai_limits(ip_hash,created_at) VALUES(?,?)").bind(ipKey, now).run();
+      const system = "Eres el asistente virtual de EMANUELDETAIL, negocio chileno de detailing automotriz y limpieza de tapicería. Responde en español chileno, amable, claro y breve. PRECIOS CONFIRMADOS: promoción limpieza interior de vehículo $35.000: cielo, asientos delanteros/traseros y piso/alfombra; no incluye domicilio. Limpieza interior completa $50.000: cielo, asientos, piso, puertas, tablero, maletero y ductos de ventilación; no incluye vidrios ni carrocería y no es a domicilio. Tapicería hogar: sillón 2 cuerpos $25.000; futón $15.000; set 6 sillas $15.000 a $20.000; sillón 3/4 cuerpos en L $35.000. Otros servicios y precios requieren evaluación por WhatsApp. Servicios: detailing automotriz, limpieza de tapicería, pulido, abrillantado y sellado cerámico. Atención en San Ramón y comunas cercanas de Santiago; confirmar cobertura y agenda por WhatsApp +56 9 3051 4998. No inventes precios, disponibilidad, duración, garantías, resultados ni servicio a domicilio. Si faltan datos, pide tipo de vehículo/servicio/comuna o deriva a WhatsApp. No solicites datos sensibles ni pagos. Si el usuario pide reservar, toma servicio, comuna y preferencia de día, pero aclara que la reserva queda pendiente de confirmación humana. Devuelve JSON válido con campos answer (respuesta al cliente), handoff (booleano), handoff_reason (texto corto o vacío). Deriva cuando pidan hablar con una persona, reclamen, soliciten algo no contemplado, necesiten cotización especial o haya incertidumbre.";
+      const result = await env.AI.run("@cf/openai/gpt-oss-120b", {
+        messages: [{ role: "system", content: system }, ...history, { role: "user", content: message }],
+        max_tokens: 350
+      });
+      let raw = typeof result === "string" ? result : (result?.response || result?.result || "");
+      if (!raw && result?.choices?.[0]?.message?.content) raw = result.choices[0].message.content;
+      if (!raw || typeof raw !== "string") throw new Error("empty_model_response");
+      let parsed;
+      try {
+        const cleaned = raw.replace(/^`+`+json\s*/i, "").replace(/\s*`+`+$/,"").trim();
+        parsed = JSON.parse(cleaned);
+      } catch {
+        parsed = { answer: raw.trim(), handoff: true, handoff_reason: "Respuesta requiere revisión" };
+      }
+      const answer = String(parsed.answer || "").slice(0, 1400);
+      if (!answer) throw new Error("empty_answer");
+      return json({ ok: true, answer, handoff: parsed.handoff === true, handoff_reason: String(parsed.handoff_reason || "").slice(0, 180), provider: "Cloudflare Workers AI" });
+    } catch {
+      return json({ error: "No pude procesar tu consulta ahora. Puedes escribirnos directamente por WhatsApp al +56 9 3051 4998." }, 503);
+    }
+  }
+
   if (path === "marketing/ai-copy" && req.method === "POST") {
     if (!authorized(req, env)) return json({ error: "Autorización requerida. Inicia sesión como administrador." }, 401);
     if (!env.AI) return json({ error: "Falta activar el vínculo Workers AI llamado AI en Cloudflare Pages > Settings > Bindings. No se requiere API key." }, 503);
