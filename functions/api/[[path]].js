@@ -151,7 +151,7 @@ export async function onRequest(context) {
       if (!env.RESEND_API_KEY) return json({error:"La recuperación por correo aún no está habilitada. Falta configurar RESEND_API_KEY en Cloudflare Preview."},503);
       const account = await env.DB.prepare("SELECT scope FROM admin_accounts WHERE scope=? AND email=?").bind(scope,recoveryEmail).first();
       if (!account) return json({ok:true,message:"Si los datos corresponden, recibirás instrucciones en el correo registrado."});
-      const rawToken = randomToken(), tokenHash = await sha256(rawToken), now = Date.now();
+      const rawToken = randomToken(), tokenHash = await sha256(rawToken);
       await env.DB.prepare("DELETE FROM admin_reset_tokens WHERE scope=? OR expires_at<?").bind(scope,now).run();
       await env.DB.prepare("INSERT INTO admin_reset_tokens(token_hash,scope,expires_at,used_at,created_at) VALUES(?,?,?,NULL,?)").bind(tokenHash,scope,now+20*60*1000,now).run();
       const resetUrl = new URL(scope === "marketing" ? "/marketing/" : "/admin.html",url.origin);
