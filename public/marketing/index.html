@@ -72,7 +72,8 @@ nav{display:flex;gap:8px;overflow:auto;padding:15px 0}nav button,.btn{border:1px
 </div>
 <script>
 const $=id=>document.getElementById(id);const KEY='ed_marketing_posts_v1';let posts=load();let adminToken='';let currentPhoto='';let currentDraft=null;const BOOKING_KEY='ed_marketing_bookings_v1';let bookings=loadBookings();
-function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return []}}\nfunction loadBookings(){try{return JSON.parse(localStorage.getItem(BOOKING_KEY)||'[]')}catch{return []}}
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return []}}
+function loadBookings(){try{return JSON.parse(localStorage.getItem(BOOKING_KEY)||'[]')}catch{return []}}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(posts));renderStats();renderQueue();return true}catch(e){$('message').textContent='No se pudo guardar: el almacenamiento del navegador está lleno. Exporta un respaldo y elimina imágenes antiguas.';return false}}
 const CRM_TOKEN_KEY='ed_marketing_admin_token';let crmToken=sessionStorage.getItem(CRM_TOKEN_KEY)||'';
 const crmSources={whatsapp:'WhatsApp Business',facebook:'Facebook Empresa',instagram:'Instagram Empresa',marketplace_1:'Marketplace 1',marketplace_2:'Marketplace 2',web:'Página web',otro:'Otro'};
