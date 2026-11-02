@@ -8,9 +8,10 @@ const json = (data, status = 200) =>
     },
   });
 
-function authorized(req, env) {
+function authorized(req, env, scope = "site") {
   const h = req.headers.get("Authorization") || "";
-  const expected = String(env.ADMIN_TOKEN || "").trim();
+  const key = scope === "marketing" ? "MARKETING_ADMIN_TOKEN" : "SITE_ADMIN_TOKEN";
+  const expected = String(env[key] || env.ADMIN_TOKEN || "").trim();
   return !!expected && h === `Bearer ${expected}`;
 }
 
@@ -24,7 +25,9 @@ export async function onRequest(context) {
       ok: true,
       db: !!env.DB,
       images: !!env.IMAGES,
-      adminConfigured: !!env.ADMIN_TOKEN,
+      adminConfigured: !!(env.ADMIN_TOKEN || env.SITE_ADMIN_TOKEN || env.MARKETING_ADMIN_TOKEN),
+      siteAdminConfigured: !!(env.SITE_ADMIN_TOKEN || env.ADMIN_TOKEN),
+      marketingAdminConfigured: !!(env.MARKETING_ADMIN_TOKEN || env.ADMIN_TOKEN),
     });
   }
 
@@ -36,22 +39,23 @@ export async function onRequest(context) {
       return json({ error: "Solicitud inválida" }, 400);
     }
 
-    const received =
-      typeof b.token === "string" ? b.token.trim() : "";
-    const expected = String(env.ADMIN_TOKEN || "").trim();
+    const received = typeof b.token === "string" ? b.token.trim() : "";
+    const scope = b.scope === "marketing" ? "marketing" : "site";
+    const key = scope === "marketing" ? "MARKETING_ADMIN_TOKEN" : "SITE_ADMIN_TOKEN";
+    const expected = String(env[key] || env.ADMIN_TOKEN || "").trim();
 
     if (!expected) {
       return json(
         {
           error:
-            "Falta configurar ADMIN_TOKEN en Pages > Settings > Variables and Secrets",
+            "Falta configurar la clave de acceso correspondiente en Cloudflare Pages > Settings > Variables and Secrets",
         },
         503
       );
     }
 
     if (received && received === expected) {
-      return json({ ok: true });
+      return json({ ok: true, scope });
     }
 
     return json({ error: "Clave incorrecta" }, 401);
@@ -114,7 +118,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "marketing/ai-copy" && req.method === "POST") {
-    if (!authorized(req, env)) return json({ error: "Autorización requerida. Inicia sesión como administrador." }, 401);
+    if (!authorized(req, env, "marketing")) return json({ error: "Autorización requerida. Inicia sesión en Marketing IA." }, 401);
     if (!env.AI) return json({ error: "Falta activar el vínculo Workers AI llamado AI en Cloudflare Pages > Settings > Bindings. No se requiere API key." }, 503);
     let body = {};
     try { body = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
@@ -292,7 +296,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   if (path === "promotions" && req.method === "GET") {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     try { await env.DB.prepare("ALTER TABLE promotions ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'").run(); } catch {}
-    if (authorized(req, env)) {
+    if (authorized(req, env, "marketing")) {
       const { results = [] } = await env.DB.prepare("SELECT * FROM promotions ORDER BY updated_at DESC LIMIT 200").all();
       return json(results);
     }
@@ -315,11 +319,9 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     return json({ ok: true, id: result.meta.last_row_id, message: "Consulta recibida. EmanuelDetail se pondrá en contacto contigo." }, 201);
   }
 
-  if (!authorized(req, env)) {
-    return json(
-      { error: "Debes iniciar sesión como administrador" },
-      401
-    );
+  const marketingPath = path === "bookings" || path.startsWith("bookings/") || path === "leads" || path.startsWith("leads/") || path === "promotions" || path.startsWith("promotions/");
+  if (!authorized(req, env, marketingPath ? "marketing" : "site")) {
+    return json({ error: marketingPath ? "Debes iniciar sesión en Marketing IA." : "Debes iniciar sesión como administrador del sitio." }, 401);
   }
 
   if (path === "bookings" && req.method === "GET") {
