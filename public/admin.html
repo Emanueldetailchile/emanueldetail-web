@@ -42,10 +42,19 @@ button:disabled{opacity:.6;cursor:wait}
 
 <section class="card" id="login">
 <h2>Iniciar sesión</h2>
-<label>Clave de administrador</label>
-<input id="token" type="password" autocomplete="current-password" placeholder="Clave configurada en Cloudflare">
+<label>Clave provisional o contraseña</label>
+<input id="token" type="password" autocomplete="current-password" placeholder="Clave provisional / contraseña definitiva">
 <button id="loginbtn">Entrar</button>
-<p class="small">La clave se configura como ADMIN_TOKEN en Pages → Settings → Variables and Secrets.</p>
+<p class="small">El primer ingreso exige crear una contraseña definitiva de al menos 12 caracteres. La clave provisional dejará de funcionar.</p>
+<p class="small" id="loginStatus" role="status"></p>
+</section>
+<section class="card hidden" id="changePassword">
+<h2>Configura tu contraseña definitiva</h2>
+<p class="small">Este paso es obligatorio. Tu contraseña se almacena mediante un hash seguro; no se guarda en texto legible.</p>
+<label>Nueva contraseña (mínimo 12 caracteres)</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12">
+<label>Repite la nueva contraseña</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="12">
+<button id="saveNewPassword">Guardar contraseña definitiva</button>
+<p class="small" id="changeStatus" role="status"></p>
 </section>
 
 <div id="app" class="hidden">
@@ -102,20 +111,20 @@ button:disabled{opacity:.6;cursor:wait}
 </div>
 
 <script>
-let token = sessionStorage.getItem('ed_admin_token') || '';
+let authenticated = false;
+let mustChange = false;
 const $ = id => document.getElementById(id);
 
 function status(message) {
   $('status').textContent = message;
 }
 
-function headers() {
-  return { Authorization: 'Bearer ' + token };
-}
+function headers() { return {}; }
 
 async function api(path, opts = {}) {
   const response = await fetch('/api/' + path, {
     ...opts,
+    credentials: 'same-origin',
     headers: {
       ...headers(),
       ...(opts.headers || {})
@@ -222,41 +231,53 @@ $('site-images').addEventListener('click', async event => {
 });
 
 function show() {
-  $('login').classList.toggle('hidden', !!token);
-  $('app').classList.toggle('hidden', !token);
-  if (token) refresh();
+  $('login').classList.toggle('hidden', authenticated || mustChange);
+  $('changePassword').classList.toggle('hidden', !mustChange);
+  $('app').classList.toggle('hidden', !authenticated || mustChange);
+  if (authenticated && !mustChange) refresh();
 }
-
 async function login() {
   const button = $('loginbtn');
   button.disabled = true;
-  button.textContent = 'Ingresando...';
-
-  const enteredToken = $('token').value.trim();
-
+  button.textContent = 'Verificando...';
   try {
-    const response = await fetch('/api/login', {
-      method: 'POST',
+    const response = await fetch('/api/auth/login', {
+      method: 'POST', credentials: 'same-origin',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token: enteredToken })
+      body: JSON.stringify({ scope: 'site', password: $('token').value })
     });
-
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'No se pudo iniciar sesión.');
-    }
-
-    token = enteredToken;
-    sessionStorage.setItem('ed_admin_token', token);
+    if (!response.ok) throw new Error(data.error || 'No se pudo iniciar sesión.');
+    authenticated = true; mustChange = !!data.mustChange;
+    $('token').value = '';
+    $('loginStatus').textContent = mustChange ? 'Acceso provisional correcto. Debes crear tu contraseña definitiva.' : 'Sesión iniciada.';
     show();
-  } catch (error) {
-    alert(error.message);
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Entrar';
-  }
+  } catch (error) { $('loginStatus').textContent = error.message; }
+  finally { button.disabled = false; button.textContent = 'Entrar'; }
 }
+async function saveNewPassword() {
+  const password = $('newPassword').value, confirm = $('confirmPassword').value;
+  if (password.length < 12) { $('changeStatus').textContent = 'Usa al menos 12 caracteres.'; return; }
+  if (password !== confirm) { $('changeStatus').textContent = 'Las contraseñas no coinciden.'; return; }
+  $('saveNewPassword').disabled = true;
+  try {
+    const response = await fetch('/api/auth/change-password', {method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({scope:'site',password})});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'No se pudo guardar la contraseña.');
+    mustChange = false; authenticated = true; $('newPassword').value = ''; $('confirmPassword').value = '';
+    $('changeStatus').textContent = 'Contraseña definitiva guardada.';
+    show();
+  } catch (error) { $('changeStatus').textContent = error.message; }
+  finally { $('saveNewPassword').disabled = false; }
+}
+async function restoreSession() {
+  try {
+    const r = await fetch('/api/auth/me?scope=site',{credentials:'same-origin'});
+    const d = await r.json(); authenticated = !!d.loggedIn; mustChange = !!d.mustChange; show();
+  } catch { authenticated = false; mustChange = false; show(); }
+}
+$('loginbtn').addEventListener('click',login);
+$('saveNewPassword').addEventListener('click',saveNewPassword);
 
 async function upload(file) {
   if (!file) return '';
@@ -438,14 +459,11 @@ $('addgallery').onclick = async () => {
   }
 };
 
-$('logout').onclick = () => {
-  sessionStorage.removeItem('ed_admin_token');
-  token = '';
-  $('token').value = '';
-  show();
+$('logout').onclick = async () => {
+  await fetch('/api/auth/logout',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({scope:'site'})});
+  authenticated = false; mustChange = false; $('token').value = ''; show();
 };
-
-show();
+restoreSession();
 </script>
 <script src="/admin-visitas.js" defer></script>
 </body>
