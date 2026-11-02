@@ -484,9 +484,36 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     return json({ ok: true, id: result.meta.last_row_id, message: "Consulta recibida. EmanuelDetail se pondrá en contacto contigo." }, 201);
   }
 
-  const marketingPath = path === "bookings" || path.startsWith("bookings/") || path === "leads" || path.startsWith("leads/") || path === "promotions" || path.startsWith("promotions/");
+  const marketingPath = path.startsWith("marketing/") || path === "bookings" || path.startsWith("bookings/") || path === "leads" || path.startsWith("leads/") || path === "promotions" || path.startsWith("promotions/");
   if (!(await authorized(req, env, marketingPath ? "marketing" : "site"))) {
     return json({ error: marketingPath ? "Debes iniciar sesión en Marketing IA." : "Debes iniciar sesión como administrador del sitio." }, 401);
+  }
+
+  // Contenido editorial centralizado: borradores y aprobaciones sincronizados entre dispositivos.
+  if (path === "marketing/posts" && req.method === "GET") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_posts (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const { results = [] } = await env.DB.prepare("SELECT payload FROM marketing_posts ORDER BY updated_at DESC LIMIT 500").all();
+    return json(results.map(row => { try { return JSON.parse(row.payload); } catch { return null; } }).filter(Boolean));
+  }
+  if (path === "marketing/posts" && req.method === "POST") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_posts (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    let b = {}; try { b = await req.json(); } catch { return json({error:"JSON inválido."},400); }
+    const id = typeof b.id === "string" ? b.id.slice(0,80) : "";
+    const caption = typeof b.caption === "string" ? b.caption.trim() : "";
+    const statuses = new Set(["borrador","aprobado","publicado"]);
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id) || !caption || caption.length > 5000) return json({error:"Publicación no válida: revisa el identificador y el texto (máximo 5.000 caracteres)."},400);
+    if (b.status && !statuses.has(b.status)) return json({error:"Estado de publicación no válido."},400);
+    const channels = Array.isArray(b.channels) ? b.channels.filter(x => typeof x === "string").slice(0,10) : [];
+    const payload = {id,createdAt:typeof b.createdAt==="string"?b.createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),service:String(b.service||"Publicación").slice(0,120),commune:String(b.commune||"").slice(0,80),channels,caption,status:statuses.has(b.status)?b.status:"borrador",approvedAt:typeof b.approvedAt==="string"?b.approvedAt:null};
+    const now = Date.now();
+    await env.DB.prepare("INSERT INTO marketing_posts(id,payload,created_at,updated_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),now,now).run();
+    return json({ok:true,post:payload},200);
+  }
+  if (path.startsWith("marketing/posts/") && req.method === "DELETE") {
+    const id = path.slice("marketing/posts/".length);
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) return json({error:"ID no válido."},400);
+    await env.DB.prepare("DELETE FROM marketing_posts WHERE id=?").bind(id).run();
+    return json({ok:true});
   }
 
   if (path === "bookings" && req.method === "GET") {
