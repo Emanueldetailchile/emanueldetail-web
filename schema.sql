@@ -41,3 +41,37 @@ CREATE TABLE IF NOT EXISTS marketing_leads (
  updated_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_marketing_leads_updated ON marketing_leads(updated_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS service_bookings (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ name TEXT NOT NULL,
+ phone TEXT NOT NULL,
+ service TEXT NOT NULL,
+ commune TEXT NOT NULL,
+ booking_date TEXT NOT NULL,
+ start_time TEXT NOT NULL,
+ notes TEXT NOT NULL DEFAULT '',
+ status TEXT NOT NULL DEFAULT 'pendiente',
+ created_at INTEGER NOT NULL,
+ updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_service_bookings_schedule
+ ON service_bookings(booking_date, start_time, status);
+
+CREATE TABLE IF NOT EXISTS promotions (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ title TEXT NOT NULL,
+ description TEXT NOT NULL DEFAULT '',
+ price INTEGER,
+ starts_at TEXT,
+ ends_at TEXT,
+ max_uses INTEGER,
+ used_count INTEGER NOT NULL DEFAULT 0,
+ code TEXT,
+ status TEXT NOT NULL DEFAULT 'borrador',
+ created_at INTEGER NOT NULL,
+ updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_promotions_status_dates
+ ON promotions(status, starts_at, ends_at);
