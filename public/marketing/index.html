@@ -39,11 +39,11 @@ nav{display:flex;gap:8px;overflow:auto;padding:15px 0}nav button,.btn{border:1px
 <h2>CRM · Registro de consultas</h2>
 <p class="hint">Registra clientes que llegan desde WhatsApp, Facebook, Instagram, web y tus dos perfiles de Marketplace. Los mensajes de Marketplace se anotan manualmente.</p>
 <div id="crmLogin" class="panel" style="margin:14px 0;background:#0d0d0d">
-<h2>Acceso de administrador</h2><p class="hint">Introduce la clave ADMIN_TOKEN configurada en Cloudflare Pages. No uses tu contraseña de Facebook.</p>
+<h2>Acceso de administrador</h2><p class="hint">Este acceso utiliza la misma clave administrativa que protege las funciones privadas del sitio. No uses tu contraseña de Facebook ni la de Cloudflare.</p>
 <div class="field"><label for="crmToken">Clave de administrador</label><input id="crmToken" type="password" autocomplete="current-password" placeholder="ADMIN_TOKEN"></div>
 <button class="btn primary" id="crmLoginBtn">Ingresar al CRM</button><p id="crmLoginMsg" class="status"></p></div>
 <div id="crmWorkspace" class="hidden">
-<h2>Nuevo cliente potencial</h2>
+<div class="actions" style="justify-content:space-between;align-items:center"><h2 style="margin:8px 0">Nuevo cliente potencial</h2><button class="btn" id="crmLogout" type="button">Cerrar sesión</button></div>
 <form id="crmLeadForm">
 <div class="two">
 <div class="field"><label for="crmName">Nombre del cliente *</label><input id="crmName" maxlength="120" required></div>
@@ -73,6 +73,7 @@ $('crmLoginBtn').addEventListener('click',async()=>{const token=$('crmToken').va
 async function crmLoadLeads(){const box=$('crmLeadList');box.textContent='Cargando...';try{const leads=await crmApi('leads');box.replaceChildren();if(!leads.length){const p=document.createElement('p');p.className='hint';p.textContent='Aún no hay consultas registradas.';box.append(p);return}for(const lead of leads){const row=document.createElement('article');row.className='crm-lead';const name=document.createElement('div');const strong=document.createElement('strong');strong.textContent=lead.name;const contact=document.createElement('small');contact.textContent=lead.contact||'Sin contacto';name.append(strong,contact);const source=document.createElement('div');const src=document.createElement('strong');src.textContent=crmSources[lead.source]||lead.source;const service=document.createElement('small');service.textContent=lead.service||'Servicio por definir';source.append(src,service);const notes=document.createElement('div');const note=document.createElement('small');note.textContent=lead.notes||'Sin notas';const date=document.createElement('small');date.textContent='Ingreso: '+new Date(lead.created_at).toLocaleDateString('es-CL');notes.append(note,date);const status=document.createElement('select');status.setAttribute('aria-label','Estado de '+lead.name);Object.entries(crmStatuses).forEach(([value,label])=>{const op=document.createElement('option');op.value=value;op.textContent=label;op.selected=lead.status===value;status.append(op)});status.addEventListener('change',async()=>{const old=lead.status;status.disabled=true;try{await crmApi('leads/'+lead.id,{method:'PATCH',body:JSON.stringify({status:status.value})});lead.status=status.value}catch(e){status.value=old;alert(e.message)}finally{status.disabled=false}});row.append(name,source,notes,status);box.append(row)}}catch(e){box.textContent=e.message}}
 $('crmLeadForm').addEventListener('submit',async e=>{e.preventDefault();const msg=$('crmFormMsg');msg.textContent='Guardando...';const payload={name:$('crmName').value.trim(),contact:$('crmContact').value.trim(),source:$('crmSource').value,service:$('crmService').value.trim(),notes:$('crmNotes').value.trim()};try{await crmApi('leads',{method:'POST',body:JSON.stringify(payload)});$('crmLeadForm').reset();msg.textContent='Cliente guardado.';await crmLoadLeads()}catch(err){msg.textContent=err.message}});
 $('crmRefresh').addEventListener('click',crmLoadLeads);
+$('crmLogout').addEventListener('click',()=>{crmToken='';sessionStorage.removeItem(CRM_TOKEN_KEY);$('crmToken').value='';$('crmLoginMsg').textContent='Sesión cerrada.';crmSync()});
 
 
 let installPromptEvent=null;
