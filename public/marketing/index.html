@@ -188,4 +188,127 @@ $('export').onclick=()=>{const blob=new Blob([JSON.stringify({app:'EmanuelDetail
 $('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d.posts))throw Error('El respaldo no contiene publicaciones válidas.');posts=[...d.posts.filter(x=>x&&typeof x.caption==='string'&&x.caption.length<=5000).map(x=>({id:String(x.id).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,80)||newId(),createdAt:typeof x.createdAt==='string'?x.createdAt:new Date().toISOString(),service:String(x.service||'Publicación').slice(0,120),commune:String(x.commune||'').slice(0,80),channels:Array.isArray(x.channels)?x.channels.filter(v=>['Página de Facebook','Grupos de Facebook','Marketplace','Marketplace 1','Marketplace 2','Instagram'].includes(v)):[],caption:x.caption,photo:safePhoto(x.photo),status:['borrador','aprobado','publicado'].includes(x.status)?x.status:'borrador'})),...posts];const map=new Map(posts.map(p=>[p.id,p]));posts=[...map.values()];persist();alert('Respaldo importado.')}catch(err){alert(err.message)}e.target.value=''};
 renderStats();renderQueue();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/marketing/sw.js').catch(()=>{}));
+
+/* AUTH FLOW PATCH */
+const authMessage = (id, message) => { const el = $(id); if (el) el.textContent = message || ""; };
+function authPane(name) {
+  ["authLoginPane","authChangePane","authForgotPane","authResetPane"].forEach(id => $(id)?.classList.toggle("hidden", id !== name));
+}
+function authShowApp() {
+  authReady = true;
+  $("authGate")?.classList.add("hidden");
+  $("adminShell")?.classList.remove("hidden");
+  crmSync();
+}
+async function authRequest(path, payload = {}) {
+  const response = await fetch("/api/auth/" + path, {
+    method: "POST", credentials: "same-origin",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({...payload, scope:"marketing"})
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "No se pudo completar la operación (" + response.status + ").");
+  return data;
+}
+async function authLogin() {
+  const button = $("authLoginButton");
+  const password = $("authPassword").value;
+  if (!password) { authMessage("authMessage","Ingresa tu clave para continuar."); return; }
+  button.disabled = true; button.textContent = "Verificando…";
+  authMessage("authMessage","");
+  try {
+    const data = await authRequest("login",{password});
+    $("authPassword").value = "";
+    if (data.mustChange) {
+      authPane("authChangePane");
+      authMessage("authChangeMessage","Acceso inicial validado. Crea tu contraseña definitiva.");
+    } else {
+      authShowApp();
+    }
+  } catch (error) {
+    authMessage("authMessage",error.message);
+  } finally {
+    button.disabled = false; button.textContent = "Ingresar";
+  }
+}
+async function authChangePassword() {
+  const button = $("authChangeButton");
+  const password = $("authNewPassword").value;
+  const confirm = $("authConfirmPassword").value;
+  if (password.length < 12) { authMessage("authChangeMessage","La contraseña debe tener al menos 12 caracteres."); return; }
+  if (password !== confirm) { authMessage("authChangeMessage","Las contraseñas no coinciden."); return; }
+  button.disabled = true; button.textContent = "Guardando…";
+  try {
+    await authRequest("change-password",{password});
+    $("authNewPassword").value = ""; $("authConfirmPassword").value = "";
+    authMessage("authChangeMessage","Contraseña definitiva guardada. La clave provisional dejó de funcionar.");
+    authShowApp();
+  } catch (error) {
+    authMessage("authChangeMessage",error.message);
+  } finally {
+    button.disabled = false; button.textContent = "Guardar contraseña definitiva";
+  }
+}
+async function authForgot() {
+  const email = $("authEmail").value.trim();
+  if (!email) { authMessage("authResetMessage","Ingresa el correo de recuperación."); return; }
+  const button = $("authRequestResetButton"); button.disabled = true; button.textContent = "Enviando…";
+  try {
+    const data = await authRequest("request-reset",{email});
+    authMessage("authResetMessage",data.message || "Si los datos corresponden, recibirás instrucciones en el correo registrado.");
+  } catch (error) { authMessage("authResetMessage",error.message); }
+  finally { button.disabled = false; button.textContent = "Enviar enlace de recuperación"; }
+}
+async function authDoReset() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get("reset") || "";
+  const password = $("authResetPassword").value;
+  const confirm = $("authResetConfirm").value;
+  if (!token) { authMessage("authDoResetMessage","El enlace no contiene un token válido. Solicita uno nuevo."); return; }
+  if (password.length < 12) { authMessage("authDoResetMessage","La contraseña debe tener al menos 12 caracteres."); return; }
+  if (password !== confirm) { authMessage("authDoResetMessage","Las contraseñas no coinciden."); return; }
+  const button = $("authDoResetButton"); button.disabled = true; button.textContent = "Guardando…";
+  try {
+    const data = await authRequest("reset-password",{token,password});
+    authMessage("authDoResetMessage",data.message || "Contraseña actualizada. Ya puedes iniciar sesión.");
+    $("authResetPassword").value = ""; $("authResetConfirm").value = "";
+    history.replaceState({}, "", location.pathname);
+    setTimeout(() => authPane("authLoginPane"), 1800);
+  } catch (error) { authMessage("authDoResetMessage",error.message); }
+  finally { button.disabled = false; button.textContent = "Guardar nueva contraseña"; }
+}
+async function authLogout() {
+  try { await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({scope:"marketing"})}); }
+  finally {
+    authReady = false;
+    $("adminShell")?.classList.add("hidden");
+    $("authGate")?.classList.remove("hidden");
+    authPane("authLoginPane");
+    authMessage("authMessage","Sesión cerrada.");
+    crmSync();
+  }
+}
+$("authLoginButton")?.addEventListener("click",authLogin);
+$("authPassword")?.addEventListener("keydown",e=>{if(e.key==="Enter")authLogin();});
+$("authChangeButton")?.addEventListener("click",authChangePassword);
+$("authForgotButton")?.addEventListener("click",()=>authPane("authForgotPane"));
+$("authBackButton")?.addEventListener("click",()=>authPane("authLoginPane"));
+$("authRequestResetButton")?.addEventListener("click",authForgot);
+$("authDoResetButton")?.addEventListener("click",authDoReset);
+$("globalLogout")?.addEventListener("click",authLogout);
+(async function authInit(){
+  const params = new URLSearchParams(location.search);
+  if (params.has("reset")) { authPane("authResetPane"); return; }
+  try {
+    const response = await fetch("/api/auth/me?scope=marketing",{credentials:"same-origin",cache:"no-store"});
+    const data = await response.json();
+    if (response.ok && data.loggedIn) {
+      if (data.mustChange) authPane("authChangePane");
+      else authShowApp();
+    }
+  } catch (error) {
+    authMessage("authMessage","No se pudo verificar la sesión. Recarga la página para intentar nuevamente.");
+  }
+})();
+
 </script></body></html>
