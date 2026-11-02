@@ -54,10 +54,10 @@ async function authorized(req, env, scope = "site") {
 async function issueSession(env,scope) {
   const token = randomToken(), tokenHash = await sha256(token), now = Date.now();
   await env.DB.prepare("INSERT INTO admin_sessions(token_hash,scope,expires_at,created_at) VALUES(?,?,?,?)").bind(tokenHash,scope,now+8*60*60*1000,now).run();
-  return {token,cookie:\`\${cookieName(scope)}=\${token}; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=28800\`};
+  return {token,cookie:cookieName(scope)+"="+token+"; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=28800"};
 }
 function clearSessionCookie(scope) {
-  return \`\${cookieName(scope)}=; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=0\`;
+  return cookieName(scope)+"=; Path=/api; HttpOnly; Secure; SameSite=Strict; Max-Age=0";
 }
 
 export async function onRequest(context) {
@@ -136,7 +136,7 @@ export async function onRequest(context) {
       const resetUrl = new URL(scope === "marketing" ? "/marketing/" : "/admin.html",url.origin);
       resetUrl.searchParams.set("reset",rawToken);
       resetUrl.searchParams.set("scope",scope);
-      const emailResponse = await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+env.RESEND_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({from:env.EMAIL_FROM || "onboarding@resend.dev",to:[recoveryEmail],subject:"Recuperar acceso EMANUELDETAIL",html:\`<p>Se solicitó restablecer el acceso de EMANUELDETAIL (\${scope}).</p><p><a href="\${resetUrl.toString()}">Crear una nueva contraseña</a></p><p>Este enlace vence en 20 minutos y solo puede usarse una vez. Si no solicitaste el cambio, ignora este mensaje.</p>\`})});
+      const emailResponse = await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+env.RESEND_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({from:env.EMAIL_FROM || "onboarding@resend.dev",to:[recoveryEmail],subject:"Recuperar acceso EMANUELDETAIL",html:"<p>Se solicitó restablecer el acceso de EMANUELDETAIL ("+scope+").</p><p><a href=\""+resetUrl.toString()+"\">Crear una nueva contraseña</a></p><p>Este enlace vence en 20 minutos y solo puede usarse una vez. Si no solicitaste el cambio, ignora este mensaje.</p>"})});
       if (!emailResponse.ok) {
         await env.DB.prepare("DELETE FROM admin_reset_tokens WHERE token_hash=?").bind(tokenHash).run();
         return json({error:"No pudimos enviar el correo de recuperación. Revisa la configuración del proveedor de correo."},502);
@@ -167,9 +167,10 @@ export async function onRequest(context) {
       ok: true,
       db: !!env.DB,
       images: !!env.IMAGES,
-      adminConfigured: !!(env.SITE_ADMIN_TOKEN && env.MARKETING_ADMIN_TOKEN),
-      siteAdminConfigured: !!env.SITE_ADMIN_TOKEN,
-      marketingAdminConfigured: !!env.MARKETING_ADMIN_TOKEN,
+      adminConfigured: !!(env.SITE_ADMIN_BOOTSTRAP && env.MARKETING_ADMIN_BOOTSTRAP),
+      siteAdminConfigured: !!env.SITE_ADMIN_BOOTSTRAP,
+      marketingAdminConfigured: !!env.MARKETING_ADMIN_BOOTSTRAP,
+      recoveryEmailConfigured: !!env.RESEND_API_KEY,
     });
   }
 
