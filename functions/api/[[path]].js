@@ -173,6 +173,9 @@ export async function onRequest(context) {
       const token = typeof b?.token === "string" ? b.token : "";
       const password = typeof b?.password === "string" ? b.password : "";
       if (!token || password.length < 12 || password.length > 200) return json({error:"Enlace o contraseña no válidos. La contraseña debe tener al menos 12 caracteres."},400);
+      const bootstrapName = scope === "marketing" ? "MARKETING_ADMIN_BOOTSTRAP" : "SITE_ADMIN_BOOTSTRAP";
+      const bootstrap = String(env[bootstrapName] || "");
+      if (bootstrap && password === bootstrap) return json({error:"La contraseña definitiva debe ser distinta de la clave provisional."},400);
       const tokenHash = await sha256(token), now = Date.now();
       const reset = await env.DB.prepare("SELECT token_hash FROM admin_reset_tokens WHERE token_hash=? AND scope=? AND expires_at>? AND used_at IS NULL").bind(tokenHash,scope,now).first();
       if (!reset) return json({error:"El enlace venció o ya fue utilizado. Solicita uno nuevo."},400);
