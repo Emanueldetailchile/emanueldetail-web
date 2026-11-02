@@ -261,6 +261,23 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     }
   }
 
+  if (path === "marketing/upload" && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
+    if (!env.IMAGES) return json({ error: "El almacenamiento de imágenes no está disponible." }, 503);
+    const form = await req.formData();
+    const file = form.get("file");
+    if (!file || typeof file === "string") return json({ error: "Selecciona una imagen." }, 400);
+    const allowed = new Map([["image/jpeg","jpg"],["image/png","png"],["image/webp","webp"]]);
+    const ext = allowed.get(file.type);
+    if (!ext) return json({ error: "Formato no permitido. Usa JPG, PNG o WebP." }, 415);
+    if (file.size < 1 || file.size > 8 * 1024 * 1024) return json({ error: "La imagen debe pesar como máximo 8 MB." }, 413);
+    const key = "marketing/" + crypto.randomUUID() + "." + ext;
+    await env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" } });
+    const base = String(env.R2_PUBLIC_URL || "").replace(/\/$/, "");
+    if (!base) return json({ error: "Falta configurar R2_PUBLIC_URL." }, 503);
+    return json({ ok: true, key, publicUrl: base + "/" + key }, 201);
+  }
+
   if (path === "marketing/ai-copy" && req.method === "POST") {
     if (!(await authorized(req, env, "marketing"))) return json({ error: "Autorización requerida. Inicia sesión en Marketing IA." }, 401);
     if (!env.AI) return json({ error: "Falta activar el vínculo Workers AI llamado AI en Cloudflare Pages > Settings > Bindings. No se requiere API key." }, 503);
@@ -504,7 +521,9 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id) || !caption || caption.length > 5000) return json({error:"Publicación no válida: revisa el identificador y el texto (máximo 5.000 caracteres)."},400);
     if (b.status && !statuses.has(b.status)) return json({error:"Estado de publicación no válido."},400);
     const channels = Array.isArray(b.channels) ? b.channels.filter(x => typeof x === "string").slice(0,10) : [];
-    const payload = {id,createdAt:typeof b.createdAt==="string"?b.createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),service:String(b.service||"Publicación").slice(0,120),commune:String(b.commune||"").slice(0,80),channels,caption,status:statuses.has(b.status)?b.status:"borrador",approvedAt:typeof b.approvedAt==="string"?b.approvedAt:null};
+    const imageBase = String(env.R2_PUBLIC_URL || "").replace(/\/$/, "") + "/marketing/";
+    const photo = typeof b.photo === "string" && b.photo.startsWith(imageBase) && b.photo.length <= 600 ? b.photo : "";
+    const payload = {id,createdAt:typeof b.createdAt==="string"?b.createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),service:String(b.service||"Publicación").slice(0,120),commune:String(b.commune||"").slice(0,80),channels,caption,photo,status:statuses.has(b.status)?b.status:"borrador",approvedAt:typeof b.approvedAt==="string"?b.approvedAt:null};
     const now = Date.now();
     await env.DB.prepare("INSERT INTO marketing_posts(id,payload,created_at,updated_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),now,now).run();
     return json({ok:true,post:payload},200);
