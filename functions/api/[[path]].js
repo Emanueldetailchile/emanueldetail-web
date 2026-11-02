@@ -223,11 +223,75 @@ export async function onRequest(context) {
     return json(results);
   }
 
+  // Reservas: la solicitud pública queda pendiente; solo el administrador puede confirmarla.
+  if (path === "bookings" && req.method === "POST") {
+    let b = {};
+    try { b = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
+    const name = typeof b.name === "string" ? b.name.trim().slice(0,120) : "";
+    const phone = typeof b.phone === "string" ? b.phone.trim().slice(0,40) : "";
+    const service = typeof b.service === "string" ? b.service.trim().slice(0,160) : "";
+    const commune = typeof b.commune === "string" ? b.commune.trim().slice(0,80) : "";
+    const date = typeof b.date === "string" ? b.date : "";
+    const start = typeof b.start === "string" ? b.start : "";
+    if (!name || !phone || !service || !commune || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, comuna, fecha y hora." }, 400);
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS service_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, service TEXT NOT NULL, commune TEXT NOT NULL, booking_date TEXT NOT NULL, start_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pendiente', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const now = Date.now();
+    const result = await env.DB.prepare("INSERT INTO service_bookings(name,phone,service,commune,booking_date,start_time,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente',?,?)").bind(name,phone,service,commune,date,start,String(b.notes||"").slice(0,700),now,now).run();
+    return json({ ok: true, id: result.meta.last_row_id, status: "pendiente", message: "Solicitud recibida. La reserva queda pendiente de confirmación." }, 201);
+  }
+
+  if (path === "promotions" && req.method === "GET") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const { results = [] } = await env.DB.prepare("SELECT id,title,description,price,starts_at,ends_at,max_uses,used_count,code FROM promotions WHERE status='activa' AND (starts_at IS NULL OR starts_at='' OR starts_at<=?) AND (ends_at IS NULL OR ends_at='' OR ends_at>=?) AND (max_uses IS NULL OR used_count<max_uses) ORDER BY created_at DESC").bind(new Date().toISOString().slice(0,10),new Date().toISOString().slice(0,10)).all();
+    return json(results);
+  }
+
   if (!authorized(req, env)) {
     return json(
       { error: "Debes iniciar sesión como administrador" },
       401
     );
+  }
+
+  if (path === "bookings" && req.method === "GET") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS service_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, service TEXT NOT NULL, commune TEXT NOT NULL, booking_date TEXT NOT NULL, start_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pendiente', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const { results = [] } = await env.DB.prepare("SELECT * FROM service_bookings ORDER BY booking_date ASC,start_time ASC LIMIT 300").all();
+    return json(results);
+  }
+  if (path.startsWith("bookings/") && req.method === "PATCH") {
+    const id = Number(path.split("/")[1]);
+    if (!Number.isInteger(id) || id < 1) return json({ error: "ID no válido." }, 400);
+    let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
+    const statuses = new Set(["pendiente","confirmada","reprogramacion","cancelada"]);
+    if (!statuses.has(b.status)) return json({ error: "Estado de reserva no válido." }, 400);
+    await env.DB.prepare("UPDATE service_bookings SET status=?,updated_at=? WHERE id=?").bind(b.status,Date.now(),id).run();
+    return json({ ok: true });
+  }
+  if (path === "promotions" && req.method === "GET") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const { results = [] } = await env.DB.prepare("SELECT * FROM promotions ORDER BY updated_at DESC LIMIT 200").all();
+    return json(results);
+  }
+  if (path === "promotions" && req.method === "POST") {
+    let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
+    const title = typeof b.title === "string" ? b.title.trim().slice(0,120) : "";
+    const description = typeof b.description === "string" ? b.description.trim().slice(0,700) : "";
+    const price = b.price === null || b.price === "" || b.price === undefined ? null : Number(b.price);
+    const maxUses = b.max_uses === null || b.max_uses === "" || b.max_uses === undefined ? null : Number(b.max_uses);
+    const status = ["borrador","activa","pausada","vencida"].includes(b.status) ? b.status : "borrador";
+    if (!title || (price !== null && (!Number.isSafeInteger(price) || price < 0)) || (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1))) return json({ error: "Título, precio o cupos no válidos." }, 400);
+    const now = Date.now();
+    const result = await env.DB.prepare("INSERT INTO promotions(title,description,price,starts_at,ends_at,max_uses,code,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(title,description,price,String(b.starts_at||"").slice(0,10),String(b.ends_at||"").slice(0,10),maxUses,String(b.code||"").trim().slice(0,40),status,now,now).run();
+    return json({ ok: true, id: result.meta.last_row_id }, 201);
+  }
+  if (path.startsWith("promotions/") && req.method === "PATCH") {
+    const id = Number(path.split("/")[1]);
+    if (!Number.isInteger(id) || id < 1) return json({ error: "ID no válido." }, 400);
+    let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
+    const statuses = new Set(["borrador","activa","pausada","vencida"]);
+    if (!statuses.has(b.status)) return json({ error: "Estado no válido." }, 400);
+    await env.DB.prepare("UPDATE promotions SET status=?,updated_at=? WHERE id=?").bind(b.status,Date.now(),id).run();
+    return json({ ok: true });
   }
 
   if (path === "store-config" && req.method === "PUT") {
