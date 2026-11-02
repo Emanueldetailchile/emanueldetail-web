@@ -71,6 +71,18 @@ function persist(){try{localStorage.setItem(KEY,JSON.stringify(posts));renderSta
 const crmSources={whatsapp:'WhatsApp Business',facebook:'Facebook Empresa',instagram:'Instagram Empresa',marketplace_1:'Marketplace 1',marketplace_2:'Marketplace 2',web:'Página web',otro:'Otro'};
 const crmStatuses={nuevo:'Nuevo',contactado:'Contactado',cotizado:'Cotizado',agendado:'Agendado',ganado:'Ganado',perdido:'Perdido'};
 async function crmApi(path,options={}){const headers={...(options.headers||{})};if(options.body)headers['Content-Type']='application/json';const r=await fetch('/api/'+path,{...options,credentials:'same-origin',headers});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(r.status===401){authReady=false;logoutAdmin();throw new Error('Sesión no autorizada. Ingresa nuevamente.')}if(!r.ok)throw new Error(d.error||'Error de servidor');return d}
+const R2_MEDIA_PREFIX='https://pub-b985f908dab04541837258217cdf0a0e.r2.dev/marketing/';
+async function uploadMarketingPhoto(photo){
+ if(typeof photo!=='string'||!photo)return '';
+ if(photo.startsWith(R2_MEDIA_PREFIX))return photo;
+ if(!/^data:image\/(jpeg|png|webp);base64,/.test(photo))return '';
+ const blob=await (await fetch(photo)).blob();
+ const form=new FormData();form.append('file',blob,'marketing-image.'+(blob.type==='image/png'?'png':blob.type==='image/webp'?'webp':'jpg'));
+ const response=await fetch('/api/marketing/upload',{method:'POST',credentials:'same-origin',body:form});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok||!data.publicUrl)throw new Error(data.error||'No se pudo subir la imagen al almacenamiento seguro.');
+ return data.publicUrl;
+}
 async function syncMarketingPosts(){
  const remote=await crmApi('marketing/posts');
  const byId=new Map(remote.map(p=>[p.id,p]));
@@ -80,17 +92,18 @@ async function syncMarketingPosts(){
   const localTime=Date.parse(local.updatedAt||local.createdAt||0)||0;
   const serverTime=Date.parse(server?.updatedAt||server?.createdAt||0)||0;
   if(!server||localTime>serverTime){
-   const payload={...local,photo:undefined};
-   const saved=await crmApi('marketing/posts',{method:'POST',body:JSON.stringify(payload)});
+   const photo=await uploadMarketingPhoto(local.photo);
+   const saved=await crmApi('marketing/posts',{method:'POST',body:JSON.stringify({...local,photo})});
    if(saved.post)byId.set(saved.post.id,saved.post);
   }
  }
- posts=[...byId.values()].map(server=>({...server,photo:posts.find(local=>local.id===server.id)?.photo||''})).sort((a,b)=>(Date.parse(b.updatedAt||b.createdAt)||0)-(Date.parse(a.updatedAt||a.createdAt)||0));
+ posts=[...byId.values()].map(server=>{const local=posts.find(item=>item.id===server.id);return {...server,photo:local?.photo?.startsWith('data:image/')?server.photo||local.photo:server.photo||local?.photo||''}}).sort((a,b)=>(Date.parse(b.updatedAt||b.createdAt)||0)-(Date.parse(a.updatedAt||a.createdAt)||0));
  try{localStorage.setItem(KEY,JSON.stringify(posts))}catch{}
  renderStats();renderQueue();
 }
 async function saveMarketingPost(post){
- const result=await crmApi('marketing/posts',{method:'POST',body:JSON.stringify({...post,photo:undefined})});
+ const photo=await uploadMarketingPhoto(post.photo);
+ const result=await crmApi('marketing/posts',{method:'POST',body:JSON.stringify({...post,photo})});
  return result.post;
 }
 function crmSync(){$('crmWorkspace').classList.toggle('hidden',!authReady);if(authReady)crmLoadLeads()}
@@ -114,7 +127,7 @@ installButton.addEventListener('click',async()=>{
 });
 updateInstallButton();
 renderStats();renderQueue();const newId=()=>crypto.randomUUID?crypto.randomUUID():('ed-'+Date.now()+'-'+Math.random().toString(36).slice(2));
-function safePhoto(v){return typeof v==='string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length<2200000 ? v : ''}
+function safePhoto(v){return typeof v==='string' && ((/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v)&&v.length<2200000)||v.startsWith(R2_MEDIA_PREFIX))?v:''}
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function channels(){return [...document.querySelectorAll('[name=channel]:checked')].map(x=>x.value)}
 function makeCaption(){const service=$('service').value,commune=$('commune').value,offer=$('offer').value.trim()||({'Pack de limpieza de tapiz':'Promoción de lanzamiento: $30.000','Full interior':'$50.000','Limpieza superficial de motor a vapor':'$20.000'}[service]||''),objective=$('objective').value,notes=$('notes').value.trim();let lead=objective==='Educar y generar confianza'?'Un espacio limpio también hace la diferencia.':objective==='Mostrar resultados reales'?'Cada detalle cuenta en el cuidado de tu vehículo.':objective==='Promocionar un servicio'?'Dale a tu vehículo el cuidado que merece.':'¿Tu vehículo necesita una limpieza interior?';let lines=[lead,'','En EMANUELDETAIL realizamos '+service.toLowerCase()+'.'];if(notes)lines.push('',notes);if(offer)lines.push('',offer);lines.push('','Atención con reserva previa en nuestro espacio de trabajo en San Ramón. Coordinamos los detalles y disponibilidad por mensaje.','', '¿Quieres cotizar? Escríbenos por Facebook Messenger.','', 'Atención en '+commune+' y comunas cercanas.','', '#EmanuelDetail #DetailingAutomotriz #LimpiezaAutomotriz #SantiagoChile');if(channels().includes('Grupos de Facebook'))lines.push('','Publicación para grupos: adapta el saludo y revisa las reglas del grupo antes de compartir.');return lines.join('\n')}
