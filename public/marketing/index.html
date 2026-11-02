@@ -146,7 +146,7 @@ async function renderBookings(){
    const p=document.createElement('p');p.textContent=new Date(b.booking_date+'T12:00:00').toLocaleDateString('es-CL')+' · '+b.start_time+' · '+b.commune+' · '+b.phone+(b.notes?' · '+b.notes:'');card.append(p);
    const status=document.createElement('select');status.setAttribute('aria-label','Estado de reserva de '+b.name);
    [['pendiente','Pendiente'],['confirmada','Confirmada'],['reprogramacion','Reprogramación'],['cancelada','Cancelada']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;o.selected=b.status===v;status.append(o)});
-   status.addEventListener('change',async()=>{status.disabled=true;try{await crmApi('bookings/'+b.id,{method:'PATCH',body:JSON.stringify({status:status.value})});tag.textContent=status.value}else{status.value=b.status;alert('No se pudo actualizar la reserva.')}finally{status.disabled=false}});
+   status.addEventListener('change',async()=>{const previous=b.status;status.disabled=true;try{await crmApi('bookings/'+b.id,{method:'PATCH',body:JSON.stringify({status:status.value})});b.status=status.value;tag.textContent=status.value}catch(err){status.value=previous;alert('No se pudo actualizar la reserva: '+err.message)}finally{status.disabled=false}});
    card.append(status);box.append(card);
   }
  }catch(err){box.replaceChildren();const p=document.createElement('p');p.className='hint';p.textContent=err.message;box.append(p)}
