@@ -484,33 +484,6 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     return json({ ok: true, id: result.meta.last_row_id, message: "Consulta recibida. EmanuelDetail se pondrá en contacto contigo." }, 201);
   }
 
-  // Editorial content is stored centrally in D1 and scoped to the Marketing IA session.
-  if (path === "marketing-posts" || path.startsWith("marketing-posts/")) {
-    if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
-    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_posts (id TEXT PRIMARY KEY, payload TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'borrador', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
-    if (path === "marketing-posts" && req.method === "GET") {
-      const { results = [] } = await env.DB.prepare("SELECT payload FROM marketing_posts ORDER BY updated_at DESC LIMIT 500").all();
-      return json(results.map(row => { try { return JSON.parse(row.payload); } catch { return null; } }).filter(Boolean));
-    }
-    if (path === "marketing-posts" && req.method === "POST") {
-      let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
-      const id = typeof b.id === "string" ? b.id.slice(0,80) : "";
-      const caption = typeof b.caption === "string" ? b.caption.trim() : "";
-      if (!id || !caption || caption.length > 5000) return json({ error: "ID y texto válido (máximo 5.000 caracteres) son obligatorios." }, 400);
-      const now = Date.now();
-      const payload = { id, createdAt: typeof b.createdAt === "string" ? b.createdAt : new Date(now).toISOString(), updatedAt: new Date(now).toISOString(), service: String(b.service || "Publicación").slice(0,120), commune: String(b.commune || "").slice(0,80), channels: Array.isArray(b.channels) ? b.channels.filter(x => typeof x === "string").slice(0,10) : [], caption, photo: "", status: ["borrador","aprobado","publicado"].includes(b.status) ? b.status : "borrador", approvedAt: typeof b.approvedAt === "string" ? b.approvedAt : null };
-      await env.DB.prepare("INSERT INTO marketing_posts(id,payload,status,created_at,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,status=excluded.status,updated_at=excluded.updated_at").bind(id,JSON.stringify(payload),payload.status,now,now).run();
-      return json({ ok: true, post: payload }, 201);
-    }
-    if (path.startsWith("marketing-posts/") && req.method === "DELETE") {
-      const id = decodeURIComponent(path.slice("marketing-posts/".length)).slice(0,80);
-      if (!id) return json({ error: "ID no válido." }, 400);
-      await env.DB.prepare("DELETE FROM marketing_posts WHERE id=?").bind(id).run();
-      return json({ ok: true });
-    }
-    return json({ error: "Método o ruta no permitidos." }, 405);
-  }
-
   const marketingPath = path.startsWith("marketing/") || path === "bookings" || path.startsWith("bookings/") || path === "leads" || path.startsWith("leads/") || path === "promotions" || path.startsWith("promotions/");
   if (!(await authorized(req, env, marketingPath ? "marketing" : "site"))) {
     return json({ error: marketingPath ? "Debes iniciar sesión en Marketing IA." : "Debes iniciar sesión como administrador del sitio." }, 401);
