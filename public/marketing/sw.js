@@ -1,4 +1,4 @@
-const CACHE='ed-marketing-v9';
+const CACHE='ed-marketing-v10';
 const FILES=['/marketing/','/marketing/manifest.webmanifest','/assets/logo-emanueldetail.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES))));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));
