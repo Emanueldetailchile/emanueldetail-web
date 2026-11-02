@@ -233,7 +233,7 @@ export async function onRequest(context) {
     const commune = typeof b.commune === "string" ? b.commune.trim().slice(0,80) : "";
     const date = typeof b.date === "string" ? b.date : "";
     const start = typeof b.start === "string" ? b.start : "";
-    if (!name || !phone || !service || !commune || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, comuna, fecha y hora." }, 400);
+    if (!name || !phone || !service || !commune || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, comuna, fecha y hora." }, 400);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS service_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, service TEXT NOT NULL, commune TEXT NOT NULL, booking_date TEXT NOT NULL, start_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pendiente', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     const now = Date.now();
     const result = await env.DB.prepare("INSERT INTO service_bookings(name,phone,service,commune,booking_date,start_time,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente',?,?)").bind(name,phone,service,commune,date,start,String(b.notes||"").slice(0,700),now,now).run();
