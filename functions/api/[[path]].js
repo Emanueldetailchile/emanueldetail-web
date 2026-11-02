@@ -57,6 +57,38 @@ export async function onRequest(context) {
     return json({ error: "Clave incorrecta" }, 401);
   }
 
+  if (path === "marketing/ai-copy" && req.method === "POST") {
+    if (!authorized(req, env)) return json({ error: "Autorización requerida. Inicia sesión como administrador." }, 401);
+    if (!env.OPENAI_API_KEY) return json({ error: "Falta configurar OPENAI_API_KEY como secreto de Pages." }, 503);
+    let body = {};
+    try { body = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
+    const allowedServices = new Set(["Limpieza interior de vehículos","Limpieza interior completa","Limpieza de tapicería de hogar","Pulido y abrillantado","Sellado cerámico","Limpieza de asientos","Otro servicio"]);
+    const allowedObjectives = new Set(["Conseguir reservas","Mostrar resultados reales","Educar y generar confianza","Promocionar un servicio"]);
+    const service = String(body.service || "");
+    const commune = String(body.commune || "").slice(0, 80);
+    const objective = String(body.objective || "");
+    const offer = String(body.offer || "").slice(0, 180);
+    const notes = String(body.notes || "").slice(0, 1200);
+    const channels = Array.isArray(body.channels) ? body.channels.filter(x => ["Página de Facebook","Grupos de Facebook","Marketplace","Instagram"].includes(x)) : [];
+    if (!allowedServices.has(service) || !allowedObjectives.has(objective) || !commune) return json({ error: "Servicio, comuna u objetivo no válido." }, 400);
+    const instructions = "Eres el asistente de marketing de EMANUELDETAIL, negocio chileno de detailing automotriz y limpieza de tapicería. Escribe en español chileno natural, profesional y cercano. Genera SOLO el texto de una publicación listo para revisar, sin explicar tu proceso. No inventes testimonios, resultados, garantías, certificaciones, disponibilidad ni servicios a domicilio. Datos confirmados: promoción limpieza interior $35.000 incluye cielo, asientos y piso/alfombra; no incluye domicilio. Limpieza interior completa $50.000 incluye cielo, asientos, piso, puertas, tablero, maletero y ductos; no incluye vidrios ni carrocería y no es a domicilio. Tapicería hogar: sillón 2 cuerpos $25.000, futón $15.000, set 6 sillas $15.000 a $20.000, sillón 3/4 cuerpos L $35.000. Otros precios sujetos a evaluación por WhatsApp. Atención con reserva previa en San Ramón y comunas cercanas; cotización por WhatsApp +56 9 3051 4998. No asumas que una oferta indicada es un precio oficial si el usuario no la confirma; úsala como texto proporcionado. Evita hashtags excesivos y afirmaciones absolutas.";
+    const prompt = ["Servicio: "+service,"Comuna objetivo: "+commune,"Objetivo: "+objective,"Oferta indicada por el administrador: "+(offer || "Ninguna"),"Detalles reales aportados: "+(notes || "Ninguno"),"Canales previstos: "+(channels.join(", ") || "No especificados"),"Redacta una publicación persuasiva, clara y breve con llamado a cotizar por WhatsApp. No agregues información no confirmada."].join("\n");
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + env.OPENAI_API_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: env.OPENAI_MODEL || "gpt-6-luna", instructions, input: prompt, max_output_tokens: 500, store: false })
+      });
+      const data = await response.json();
+      if (!response.ok) return json({ error: "El servicio de IA no respondió correctamente.", detail: response.status === 429 ? "Límite o saldo de API alcanzado." : "Revisa el secreto y el modelo configurado." }, 502);
+      const output = Array.isArray(data.output) ? data.output.flatMap(x => x.content || []).filter(x => x.type === "output_text").map(x => x.text).join("\n").trim() : "";
+      if (!output) return json({ error: "La IA no devolvió texto utilizable." }, 502);
+      return json({ ok: true, caption: output });
+    } catch {
+      return json({ error: "No fue posible conectar con el servicio de IA." }, 502);
+    }
+  }
+
   if (!env.DB) {
     return json(
       { error: "No está vinculada la base D1 (binding DB)" },
