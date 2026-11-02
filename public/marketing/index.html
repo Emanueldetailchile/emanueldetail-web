@@ -99,7 +99,7 @@ installButton.addEventListener('click',async()=>{
  alert('Para instalarla en Android: abre esta dirección en Google Chrome, toca el menú ⋮ y elige “Instalar aplicación” o “Añadir a pantalla principal”. Si no aparece, actualiza la página y vuelve a intentarlo.');
 });
 updateInstallButton();
-renderStats();renderQueue();return true}function newId(){return (crypto.randomUUID?crypto.randomUUID():('ed-'+Date.now()+'-'+Math.random().toString(36).slice(2)))}
+renderStats();renderQueue();const newId=()=>crypto.randomUUID?crypto.randomUUID():('ed-'+Date.now()+'-'+Math.random().toString(36).slice(2));
 function safePhoto(v){return typeof v==='string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length<2200000 ? v : ''}
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function channels(){return [...document.querySelectorAll('[name=channel]:checked')].map(x=>x.value)}
