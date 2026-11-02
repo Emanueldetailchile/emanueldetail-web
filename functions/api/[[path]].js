@@ -251,6 +251,20 @@ export async function onRequest(context) {
     return json(results);
   }
 
+  if (path === "contact" && req.method === "POST") {
+    let b = {};
+    try { b = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
+    const name = typeof b.name === "string" ? b.name.trim().slice(0,120) : "";
+    const contact = typeof b.contact === "string" ? b.contact.trim().slice(0,120) : "";
+    const service = typeof b.service === "string" ? b.service.trim().slice(0,160) : "";
+    const notes = typeof b.notes === "string" ? b.notes.trim().slice(0,900) : "";
+    if (!name || !contact) return json({ error: "Indica tu nombre y un teléfono o correo de contacto." }, 400);
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_leads (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, contact TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, service TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'nuevo', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const now = Date.now();
+    const result = await env.DB.prepare("INSERT INTO marketing_leads(name,contact,source,service,notes,status,created_at,updated_at) VALUES(?,?, 'web', ?, ?, 'nuevo', ?, ?)").bind(name,contact,service,notes,now,now).run();
+    return json({ ok: true, id: result.meta.last_row_id, message: "Consulta recibida. EmanuelDetail se pondrá en contacto contigo." }, 201);
+  }
+
   if (!authorized(req, env)) {
     return json(
       { error: "Debes iniciar sesión como administrador" },
