@@ -603,6 +603,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
 
 
   if (path === "leads" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketing_leads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -621,6 +622,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "leads" && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketing_leads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
