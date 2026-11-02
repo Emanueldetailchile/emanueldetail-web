@@ -507,6 +507,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "gallery" && req.method === "POST") {
+    if (!(await authorized(req, env, "site"))) return json({ error: "Debes iniciar sesión como administrador del sitio." }, 401);
     const b = await req.json();
 
     if (!b.image_url) {
@@ -524,12 +525,14 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path.startsWith("gallery/") && req.method === "DELETE") {
+    if (!(await authorized(req, env, "site"))) return json({ error: "Debes iniciar sesión como administrador del sitio." }, 401);
     const id = Number(path.split("/")[1]);
     await env.DB.prepare("DELETE FROM gallery WHERE id=?").bind(id).run();
     return json({ ok: true });
   }
 
   if (path === "products" && req.method === "POST") {
+    if (!(await authorized(req, env, "site"))) return json({ error: "Debes iniciar sesión como administrador del sitio." }, 401);
     const b = await req.json();
 
     if (!b.name) {
@@ -556,12 +559,14 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path.startsWith("products/") && req.method === "DELETE") {
+    if (!(await authorized(req, env, "site"))) return json({ error: "Debes iniciar sesión como administrador del sitio." }, 401);
     const id = Number(path.split("/")[1]);
     await env.DB.prepare("DELETE FROM products WHERE id=?").bind(id).run();
     return json({ ok: true });
   }
 
   if (path === "upload" && req.method === "POST") {
+    if (!(await authorized(req, env, "site"))) return json({ error: "Debes iniciar sesión como administrador del sitio." }, 401);
     if (!env.IMAGES) {
       return json(
         { error: "Falta vincular R2 con el binding IMAGES" },
