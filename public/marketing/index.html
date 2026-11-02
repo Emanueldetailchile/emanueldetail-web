@@ -91,7 +91,7 @@ async function syncMarketingPosts(){
   const server=byId.get(local.id);
   const localTime=Date.parse(local.updatedAt||local.createdAt||0)||0;
   const serverTime=Date.parse(server?.updatedAt||server?.createdAt||0)||0;
-  if(!server||localTime>serverTime){
+  if(!server||localTime>serverTime||(!server.photo&&!!local.photo)){
    const photo=await uploadMarketingPhoto(local.photo);
    const saved=await crmApi('marketing/posts',{method:'POST',body:JSON.stringify({...local,photo})});
    if(saved.post)byId.set(saved.post.id,saved.post);
