@@ -74,12 +74,18 @@ export async function onRequest(context) {
     const instructions = "Eres el asistente de marketing de EMANUELDETAIL, negocio chileno de detailing automotriz y limpieza de tapicería. Escribe en español chileno natural, profesional y cercano. Genera SOLO el texto de una publicación listo para revisar, sin explicar tu proceso. No inventes testimonios, resultados, garantías, certificaciones, disponibilidad ni servicios a domicilio. Datos confirmados: promoción limpieza interior $35.000 incluye cielo, asientos y piso/alfombra; no incluye domicilio. Limpieza interior completa $50.000 incluye cielo, asientos, piso, puertas, tablero, maletero y ductos; no incluye vidrios ni carrocería y no es a domicilio. Tapicería hogar: sillón 2 cuerpos $25.000, futón $15.000, set 6 sillas $15.000 a $20.000, sillón 3/4 cuerpos L $35.000. Otros precios sujetos a evaluación por WhatsApp. Atención con reserva previa en San Ramón y comunas cercanas; cotización por WhatsApp +56 9 3051 4998. No presentes una oferta indicada como precio oficial salvo que esté confirmada.";
     const prompt = [instructions,"Servicio: "+service,"Comuna objetivo: "+commune,"Objetivo: "+objective,"Oferta indicada por el administrador: "+(offer || "Ninguna"),"Detalles aportados: "+(notes || "Ninguno"),"Canales previstos: "+(channels.join(", ") || "No especificados"),"Redacta una publicación persuasiva, clara y breve con llamado a cotizar por WhatsApp."].join("\n");
     try {
-      const result = await env.AI.run("@cf/zai-org/glm-4.7-flash", { prompt, max_tokens: 450 });
+      const result = await env.AI.run("@cf/openai/gpt-oss-120b", {
+        messages: [
+          { role: "system", content: instructions + " Responde en español chileno. Nunca inventes precios ni condiciones." },
+          { role: "user", content: [ "Servicio: "+service, "Comuna objetivo: "+commune, "Objetivo: "+objective, "Oferta indicada por el administrador: "+(offer || "Ninguna"), "Detalles aportados: "+(notes || "Ninguno"), "Canales previstos: "+(channels.join(", ") || "No especificados"), "Redacta una publicación persuasiva, clara y breve con llamado a cotizar por WhatsApp." ].join("\\n") }
+        ],
+        max_tokens: 450
+      });
       const output = typeof result === "string" ? result : (result?.response || result?.result || "");
-      if (!output || typeof output !== "string") return json({ error: "El modelo gratuito no devolvió texto utilizable." }, 502);
-      return json({ ok: true, caption: output.trim(), provider: "Cloudflare Workers AI", model: "@cf/zai-org/glm-4.7-flash" });
+      if (!output || typeof output !== "string") return json({ error: "GPT-OSS-120B no devolvió texto utilizable." }, 502);
+      return json({ ok: true, caption: output.trim(), provider: "Cloudflare Workers AI", model: "@cf/openai/gpt-oss-120b" });
     } catch {
-      return json({ error: "No se pudo usar Workers AI. Puede que se haya alcanzado el límite gratuito diario o que el modelo esté temporalmente sin capacidad. No se generará ningún cobro de OpenAI." }, 503);
+      return json({ error: "GPT-OSS-120B no está disponible. En el plan gratuito, las solicitudes pueden detenerse al alcanzar la cuota diaria; no se usará OpenAI ni se activará facturación externa." }, 503);
     }
   }
 
