@@ -260,7 +260,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "marketing/ai-copy" && req.method === "POST") {
-    if (!(await authorized(req, env, "marketing")) return json({ error: "Autorización requerida. Inicia sesión en Marketing IA." }, 401);
+    if (!(await authorized(req, env, "marketing"))) return json({ error: "Autorización requerida. Inicia sesión en Marketing IA." }, 401);
     if (!env.AI) return json({ error: "Falta activar el vínculo Workers AI llamado AI en Cloudflare Pages > Settings > Bindings. No se requiere API key." }, 503);
     let body = {};
     try { body = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
@@ -345,7 +345,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "site-images" && req.method === "PUT") {
-    if (!(await authorized(req, env, "site")) {
+    if (!(await authorized(req, env, "site"))) {
       return json({ error: "Debes iniciar sesión como administrador" }, 401);
     }
     let body = {};
@@ -464,7 +464,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   const marketingPath = path === "bookings" || path.startsWith("bookings/") || path === "leads" || path.startsWith("leads/") || path === "promotions" || path.startsWith("promotions/");
-  if (!(await authorized(req, env, marketingPath ? "marketing" : "site")) {
+  if (!(await authorized(req, env, marketingPath ? "marketing" : "site"))) {
     return json({ error: marketingPath ? "Debes iniciar sesión en Marketing IA." : "Debes iniciar sesión como administrador del sitio." }, 401);
   }
 
