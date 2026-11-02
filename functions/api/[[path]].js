@@ -34,6 +34,7 @@ async function ensureAuthTables(env) {
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_accounts (scope TEXT PRIMARY KEY, email TEXT NOT NULL, password_hash TEXT NOT NULL DEFAULT '', salt TEXT NOT NULL DEFAULT '', must_change INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_sessions (token_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)").run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_reset_tokens (token_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, expires_at INTEGER NOT NULL, used_at INTEGER, created_at INTEGER NOT NULL)").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_login_attempts (ip_hash TEXT NOT NULL, scope TEXT NOT NULL, window_start INTEGER NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(ip_hash,scope))").run();
 }
 async function sessionInfo(req, env, scope) {
   if (!env.DB) return null;
@@ -83,14 +84,21 @@ export async function onRequest(context) {
       if (!password || password.length > 200) return json({error:"Ingresa la clave temporal o tu contraseña."},400);
       const bootstrapName = scope === "marketing" ? "MARKETING_ADMIN_BOOTSTRAP" : "SITE_ADMIN_BOOTSTRAP";
       const bootstrap = String(env[bootstrapName] || "");
+      const now = Date.now(), ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
+      const attempt = await env.DB.prepare("SELECT window_start,count FROM admin_login_attempts WHERE ip_hash=? AND scope=?").bind(ipHash,scope).first();
+      if (attempt && Number(attempt.window_start) > now-15*60*1000 && Number(attempt.count) >= 8) return json({error:"Demasiados intentos. Espera 15 minutos e inténtalo nuevamente."},429);
+      if (!attempt || Number(attempt.window_start) <= now-15*60*1000) {
+        await env.DB.prepare("INSERT INTO admin_login_attempts(ip_hash,scope,window_start,count) VALUES(?,?,?,1) ON CONFLICT(ip_hash,scope) DO UPDATE SET window_start=excluded.window_start,count=1").bind(ipHash,scope,now).run();
+      } else {
+        await env.DB.prepare("UPDATE admin_login_attempts SET count=count+1 WHERE ip_hash=? AND scope=?").bind(ipHash,scope).run();
+      }
       const account = await env.DB.prepare("SELECT scope,email,password_hash,salt,must_change FROM admin_accounts WHERE scope=?").bind(scope).first();
       let mustChange = false;
       if (!account) {
         if (!bootstrap) return json({error:"Falta configurar la clave provisional segura en Cloudflare Preview."},503);
         if (password !== bootstrap) return json({error:"Clave incorrecta."},401);
         const email = String(env.ADMIN_RECOVERY_EMAIL || "emanueldetailchile@gmail.com").toLowerCase();
-        const now = Date.now();
-        await env.DB.prepare("INSERT INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?, '', '',1,?,?)").bind(scope,email,now,now).run();
+        await env.DB.prepare("INSERT OR IGNORE INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?, '', '',1,?,?)").bind(scope,email,now,now).run();
         mustChange = true;
       } else if (Number(account.must_change) === 1) {
         if (!bootstrap || password !== bootstrap) return json({error:"Debes usar la clave provisional para completar la configuración inicial."},401);
@@ -99,6 +107,7 @@ export async function onRequest(context) {
         const valid = account.salt && account.password_hash && await passwordHash(password,account.salt) === account.password_hash;
         if (!valid) return json({error:"Clave incorrecta."},401);
       }
+      await env.DB.prepare("DELETE FROM admin_login_attempts WHERE ip_hash=? AND scope=?").bind(ipHash,scope).run();
       const issued = await issueSession(env,scope);
       return json({ok:true,scope,mustChange},200,{"Set-Cookie":issued.cookie});
     }
