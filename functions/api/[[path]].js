@@ -240,9 +240,10 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     const { results: gallery = [] } = await env.DB.prepare("SELECT id,image_url,caption,created_at FROM gallery ORDER BY id DESC LIMIT 60").all();
     const imageRow = await env.DB.prepare("SELECT value FROM site_settings WHERE key=?").bind("site_images").first();
     let siteImages = {}; try { siteImages = JSON.parse(imageRow?.value || "{}"); } catch { siteImages = {}; }
-    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    try { await env.DB.prepare("ALTER TABLE promotions ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'").run(); } catch {}
     const today = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
-    const { results: promotions = [] } = await env.DB.prepare("SELECT id,title,description,price,starts_at,ends_at,max_uses,used_count,code FROM promotions WHERE status='activa' AND (starts_at IS NULL OR starts_at='' OR starts_at<=?) AND (ends_at IS NULL OR ends_at='' OR ends_at>=?) AND (max_uses IS NULL OR used_count<max_uses) ORDER BY created_at DESC").bind(today,today).all();
+    const { results: promotions = [] } = await env.DB.prepare("SELECT id,title,description,price,starts_at,ends_at,max_uses,used_count,code,audience FROM promotions WHERE audience IN ('all','app') AND status='activa' AND (starts_at IS NULL OR starts_at='' OR starts_at<=?) AND (ends_at IS NULL OR ends_at='' OR ends_at>=?) AND (max_uses IS NULL OR used_count<max_uses) ORDER BY created_at DESC").bind(today,today).all();
     const services = [
       {id:"pack-tapiz",name:"Pack de limpieza de tapiz",price:30000,referencePrice:35000,duration:"1,5 a 2 horas",description:"Cielo, asientos delanteros y traseros, piso y alfombras."},
       {id:"full-interior",name:"Full interior",price:50000,duration:"3 a 5 horas",description:"Cielo, asientos, piso, maletero, puertas, tablero, plásticos y ductos de ventilación."},
@@ -289,7 +290,8 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
   }
 
   if (path === "promotions" && req.method === "GET") {
-    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    try { await env.DB.prepare("ALTER TABLE promotions ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'").run(); } catch {}
     if (authorized(req, env)) {
       const { results = [] } = await env.DB.prepare("SELECT * FROM promotions ORDER BY updated_at DESC LIMIT 200").all();
       return json(results);
@@ -335,7 +337,8 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     return json({ ok: true });
   }
   if (path === "promotions" && req.method === "GET") {
-    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    try { await env.DB.prepare("ALTER TABLE promotions ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'").run(); } catch {}
     const { results = [] } = await env.DB.prepare("SELECT * FROM promotions ORDER BY updated_at DESC LIMIT 200").all();
     return json(results);
   }
@@ -346,9 +349,10 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     const price = b.price === null || b.price === "" || b.price === undefined ? null : Number(b.price);
     const maxUses = b.max_uses === null || b.max_uses === "" || b.max_uses === undefined ? null : Number(b.max_uses);
     const status = ["borrador","activa","pausada","vencida"].includes(b.status) ? b.status : "borrador";
+    const audience = ["all","app","web"].includes(b.audience) ? b.audience : "all";
     if (!title || (price !== null && (!Number.isSafeInteger(price) || price < 0)) || (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1))) return json({ error: "Título, precio o cupos no válidos." }, 400);
     const now = Date.now();
-    const result = await env.DB.prepare("INSERT INTO promotions(title,description,price,starts_at,ends_at,max_uses,code,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)").bind(title,description,price,String(b.starts_at||"").slice(0,10),String(b.ends_at||"").slice(0,10),maxUses,String(b.code||"").trim().slice(0,40),status,now,now).run();
+    const result = await env.DB.prepare("INSERT INTO promotions(title,description,price,starts_at,ends_at,max_uses,code,status,audience,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(title,description,price,String(b.starts_at||"").slice(0,10),String(b.ends_at||"").slice(0,10),maxUses,String(b.code||"").trim().slice(0,40),status,audience,now,now).run();
     return json({ ok: true, id: result.meta.last_row_id }, 201);
   }
   if (path.startsWith("promotions/") && req.method === "PATCH") {
