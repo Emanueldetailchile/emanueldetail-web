@@ -426,7 +426,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
     if (date < today) return json({error:"No puedes solicitar una fecha pasada."},400);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS service_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, service TEXT NOT NULL, commune TEXT NOT NULL, booking_date TEXT NOT NULL, start_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pendiente', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
-    const {results: existing=[]} = await env.DB.prepare("SELECT start_time,service FROM service_bookings WHERE booking_date=? AND status IN ('pendiente','confirmada')").bind(date).all();
+    const {results: existing=[]} = await env.DB.prepare("SELECT start_time,service,notes FROM service_bookings WHERE booking_date=? AND status IN ('pendiente','confirmada')").bind(date).all();
     if (existing.length >= 2) return json({error:"Ese día ya alcanzó el máximo de solicitudes/servicios. Escríbenos para revisar otra fecha."},409);
     const overlaps = existing.some(item => {
       const [eh,em] = String(item.start_time).split(":").map(Number);
@@ -436,7 +436,6 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     });
     if (overlaps) return json({error:"Ese horario se cruza con otro servicio solicitado. Elige otra hora."},409);
     const now = Date.now();
-    const source = b.source === "app" ? "App clientes" : "Web";
     const result = await env.DB.prepare("INSERT INTO service_bookings(name,phone,service,commune,booking_date,start_time,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pendiente',?,?)").bind(name,phone,service,commune,date,start,notes,now,now).run();
     return json({ ok: true, id: result.meta.last_row_id, status: "pendiente", message: "Solicitud recibida. La hora queda pendiente de confirmación por EmanuelDetail." }, 201);
   }
