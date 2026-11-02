@@ -261,5 +261,89 @@ export async function onRequest(context) {
     return json({ ok: true, key, publicUrl }, 201);
   }
 
+
+  if (path === "leads" && req.method === "GET") {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketing_leads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      contact TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL,
+      service TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'nuevo',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run();
+    const { results = [] } = await env.DB.prepare(
+      "SELECT id,name,contact,source,service,notes,status,created_at,updated_at FROM marketing_leads ORDER BY updated_at DESC LIMIT 250"
+    ).all();
+    return json(results);
+  }
+
+  if (path === "leads" && req.method === "POST") {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketing_leads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      contact TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL,
+      service TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'nuevo',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run();
+    let b = {};
+    try { b = await req.json(); } catch { return json({ error: "JSON inválido" }, 400); }
+    const name = typeof b.name === "string" ? b.name.trim().slice(0,120) : "";
+    const contact = typeof b.contact === "string" ? b.contact.trim().slice(0,120) : "";
+    const service = typeof b.service === "string" ? b.service.trim().slice(0,160) : "";
+    const notes = typeof b.notes === "string" ? b.notes.trim().slice(0,1200) : "";
+    const sources = new Set(["whatsapp","facebook","instagram","marketplace_1","marketplace_2","web","otro"]);
+    const source = sources.has(b.source) ? b.source : "";
+    if (!name || !source) return json({ error: "Nombre y canal de origen son obligatorios." }, 400);
+    const now = Date.now();
+    const result = await env.DB.prepare(
+      "INSERT INTO marketing_leads(name,contact,source,service,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,'nuevo',?,?)"
+    ).bind(name,contact,source,service,notes,now,now).run();
+    return json({ ok: true, id: result.meta.last_row_id }, 201);
+  }
+
+  if (path.startsWith("leads/") && req.method === "PATCH") {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketing_leads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      contact TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL,
+      service TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'nuevo',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`).run();
+    const id = Number(path.split("/")[1]);
+    if (!Number.isInteger(id) || id < 1) return json({ error: "ID no válido." }, 400);
+    let b = {};
+    try { b = await req.json(); } catch { return json({ error: "JSON inválido" }, 400); }
+    const statuses = new Set(["nuevo","contactado","cotizado","agendado","ganado","perdido"]);
+    if (b.status !== undefined && !statuses.has(b.status)) return json({ error: "Estado no válido." }, 400);
+    const current = await env.DB.prepare("SELECT id FROM marketing_leads WHERE id=?").bind(id).first();
+    if (!current) return json({ error: "Cliente potencial no encontrado." }, 404);
+    const fields = ["status","notes","service","contact"];
+    const sets = [], values = [];
+    for (const field of fields) {
+      if (b[field] !== undefined) {
+        if (field === "status" && !statuses.has(b[field])) continue;
+        if (typeof b[field] !== "string") return json({ error: "Campo no válido: " + field }, 400);
+        sets.push(field + "=?");
+        values.push(b[field].trim().slice(0, field === "notes" ? 1200 : 160));
+      }
+    }
+    if (!sets.length) return json({ error: "No hay cambios válidos." }, 400);
+    sets.push("updated_at=?");
+    values.push(Date.now(), id);
+    await env.DB.prepare("UPDATE marketing_leads SET " + sets.join(",") + " WHERE id=?").bind(...values).run();
+    return json({ ok: true });
+  }
+
   return json({ error: "Ruta no encontrada" }, 404);
 }
