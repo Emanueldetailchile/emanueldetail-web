@@ -119,6 +119,9 @@ export async function onRequest(context) {
       if (!info || !info.mustChange) return json({error:"No hay una configuración inicial pendiente."},401);
       const password = typeof b?.password === "string" ? b.password : "";
       if (password.length < 12 || password.length > 200) return json({error:"La nueva contraseña debe tener al menos 12 caracteres."},400);
+      const bootstrapName = scope === "marketing" ? "MARKETING_ADMIN_BOOTSTRAP" : "SITE_ADMIN_BOOTSTRAP";
+      const bootstrap = String(env[bootstrapName] || "");
+      if (bootstrap && password === bootstrap) return json({error:"La contraseña definitiva debe ser distinta de la clave provisional."},400);
       const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
       const hash = await passwordHash(password,salt), now = Date.now();
       await env.DB.prepare("UPDATE admin_accounts SET password_hash=?,salt=?,must_change=0,updated_at=? WHERE scope=?").bind(hash,salt,now,scope).run();
