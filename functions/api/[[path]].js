@@ -402,6 +402,18 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
 
   // Reservas: la solicitud pública queda pendiente; solo el administrador puede confirmarla.
   if (path === "bookings" && req.method === "POST") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS booking_attempts (ip_hash TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL)").run();
+    const nowForLimit = Date.now();
+    const bookingIpHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
+    const bookingAttempt = await env.DB.prepare("SELECT window_start,count FROM booking_attempts WHERE ip_hash=?").bind(bookingIpHash).first();
+    if (bookingAttempt && Number(bookingAttempt.window_start) > nowForLimit-60*60*1000 && Number(bookingAttempt.count) >= 6) {
+      return json({error:"Se alcanzó el límite de solicitudes de reserva. Intenta nuevamente más tarde o contáctanos por WhatsApp."},429);
+    }
+    if (!bookingAttempt || Number(bookingAttempt.window_start) <= nowForLimit-60*60*1000) {
+      await env.DB.prepare("INSERT INTO booking_attempts(ip_hash,window_start,count) VALUES(?,?,1) ON CONFLICT(ip_hash) DO UPDATE SET window_start=excluded.window_start,count=1").bind(bookingIpHash,nowForLimit).run();
+    } else {
+      await env.DB.prepare("UPDATE booking_attempts SET count=count+1 WHERE ip_hash=?").bind(bookingIpHash).run();
+    }
     let b = {};
     try { b = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
     const name = typeof b.name === "string" ? b.name.trim().slice(0,120) : "";
