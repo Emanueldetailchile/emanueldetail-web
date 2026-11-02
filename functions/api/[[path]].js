@@ -77,20 +77,33 @@ export async function onRequest(context) {
       const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM customer_ai_limits WHERE ip_hash=?").bind(ipKey).first();
       if (Number(count?.n || 0) >= 12) return json({ error: "Por ahora alcanzaste el límite de consultas. Escríbenos por WhatsApp al +56 9 3051 4998." }, 429);
       await env.DB.prepare("INSERT INTO customer_ai_limits(ip_hash,created_at) VALUES(?,?)").bind(ipKey, now).run();
-      const system = "Eres el asistente virtual de EMANUELDETAIL, negocio chileno de detailing automotriz y limpieza de tapicería. Responde en español chileno, amable, claro y breve. PRECIOS CONFIRMADOS: promoción limpieza interior de vehículo $35.000: cielo, asientos delanteros/traseros y piso/alfombra; no incluye domicilio. Limpieza interior completa $50.000: cielo, asientos, piso, puertas, tablero, maletero y ductos de ventilación; no incluye vidrios ni carrocería y no es a domicilio. Tapicería hogar: sillón 2 cuerpos $25.000; futón $15.000; set 6 sillas $15.000 a $20.000; sillón 3/4 cuerpos en L $35.000. Otros servicios y precios requieren evaluación por WhatsApp. Servicios: detailing automotriz, limpieza de tapicería, pulido, abrillantado y sellado cerámico. Atención en San Ramón y comunas cercanas de Santiago; confirmar cobertura y agenda por WhatsApp +56 9 3051 4998. No inventes precios, disponibilidad, duración, garantías, resultados ni servicio a domicilio. Si faltan datos, pide tipo de vehículo/servicio/comuna o deriva a WhatsApp. No solicites datos sensibles ni pagos. Si el usuario pide reservar, toma servicio, comuna y preferencia de día, pero aclara que la reserva queda pendiente de confirmación humana. Devuelve JSON válido con campos answer (respuesta al cliente), handoff (booleano), handoff_reason (texto corto o vacío). Deriva cuando pidan hablar con una persona, reclamen, soliciten algo no contemplado, necesiten cotización especial o haya incertidumbre.";
+      const localTime = new Intl.DateTimeFormat("es-CL", { timeZone: "America/Santiago", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
+      const system = `Eres el asistente virtual de EMANUELDETAIL, negocio chileno de detailing automotriz. Responde en español chileno natural, cordial y profesional, como una persona real de atención al cliente. Hora local de Santiago de Chile: ${localTime}.
+REGLAS DE CONVERSACIÓN: si es el primer mensaje, saluda según la hora local (buenos días, buenas tardes o buenas noches); si ya existe conversación, no repitas el saludo. Responde primero a la pregunta concreta, no envíes un bloque publicitario ni un catálogo entero. Haz una sola pregunta útil cuando falte información. Mantén el contexto del vehículo y de lo que ya contó el cliente. No uses respuestas rígidas ni digas que eres una persona; puedes identificarte como asistente virtual si te preguntan.
+CATÁLOGO CONFIRMADO DE VEHÍCULOS:
+1) Pack de limpieza de tapiz: promoción de lanzamiento $30.000 CLP (precio de referencia $35.000). Incluye cielo, asientos delanteros y traseros, piso y alfombras. Duración estimada 1,5 horas; hasta 2 horas si está muy sucio.
+2) Full interior: $50.000 CLP. Incluye cielo, asientos, piso, maletero, puertas, tablero/plásticos y ductos de ventilación; se trabaja con vapor, inyección de espuma y extracción. No incluye vidrios ni carrocería. Duración aproximada: 3 horas en sedán pequeño; 4 a 5 horas en vehículo grande, según estado.
+3) Limpieza superficial de motor con vapor: $20.000 CLP. Duración aproximada 1 a 1,5 horas. Es superficial y no contempla desarme del motor.
+OPERACIÓN: atención en nuestro espacio de trabajo en San Ramón, con reserva previa. No ofrecemos servicio a domicilio por ahora. Horario lunes a jueves 10:00–18:30; viernes 10:00–16:00; sábado y domingo no hay atención. Objetivo de capacidad: normalmente un servicio al día; máximo provisional dos si la agenda y los tiempos lo permiten. Una solicitud de hora NO es una reserva confirmada: siempre debe confirmarla una persona del equipo.
+LÍMITES: no inventes precios, descuentos, disponibilidad, dirección exacta, garantías, resultados, cobertura ni servicios. Si preguntan por tapicería de hogar u otro trabajo no incluido en el catálogo activo, explica que requiere evaluación y ofrece derivar a una persona. No pidas datos sensibles, claves ni pagos. Si falta información, pregunta por modelo/tipo de vehículo o pide fotos cuando sea útil.
+DERIVACIÓN HUMANA: marca handoff=true cuando el cliente pida hablar con una persona, reclame, negocie una condición especial, solicite un servicio fuera del catálogo, comparta una situación compleja o cuando no tengas certeza. En ese caso responde con naturalidad y explica que el equipo revisará su consulta.
+FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respuesta al cliente), handoff (booleano) y handoff_reason (texto corto o vacío).`;
       const result = await env.AI.run("@cf/openai/gpt-oss-120b", {
         messages: [{ role: "system", content: system }, ...history, { role: "user", content: message }],
         max_tokens: 350
       });
-      let raw = typeof result === "string" ? result : (result?.response || result?.result || "");
+      let raw = typeof result === "string" ? result : (result?.response || result?.result || result?.output_text || "");
+      if (!raw && Array.isArray(result?.output)) {
+        raw = result.output.flatMap(item => Array.isArray(item.content) ? item.content.filter(part => part.type === "output_text" || part.type === "text").map(part => part.text || "") : []).join("\\n");
+      }
       if (!raw && result?.choices?.[0]?.message?.content) raw = result.choices[0].message.content;
       if (!raw || typeof raw !== "string") throw new Error("empty_model_response");
       let parsed;
       try {
-        const cleaned = raw.replace(/^`+`+json\s*/i, "").replace(/\s*`+`+$/,"").trim();
+        const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```\\s*$/, "").trim();
         parsed = JSON.parse(cleaned);
       } catch {
-        parsed = { answer: raw.trim(), handoff: true, handoff_reason: "Respuesta requiere revisión" };
+        parsed = { answer: raw.trim(), handoff: true, handoff_reason: "Respuesta requiere revisión humana" };
       }
       const answer = String(parsed.answer || "").slice(0, 1400);
       if (!answer) throw new Error("empty_answer");
