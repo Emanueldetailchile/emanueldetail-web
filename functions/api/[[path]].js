@@ -35,6 +35,7 @@ async function ensureAuthTables(env) {
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_sessions (token_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)").run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_reset_tokens (token_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, expires_at INTEGER NOT NULL, used_at INTEGER, created_at INTEGER NOT NULL)").run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_login_attempts (ip_hash TEXT NOT NULL, scope TEXT NOT NULL, window_start INTEGER NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(ip_hash,scope))").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_reset_attempts (ip_hash TEXT NOT NULL, scope TEXT NOT NULL, window_start INTEGER NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(ip_hash,scope))").run();
 }
 async function sessionInfo(req, env, scope) {
   if (!env.DB) return null;
@@ -133,8 +134,19 @@ export async function onRequest(context) {
     if (path === "auth/request-reset" && req.method === "POST") {
       const b = await body();
       const scope = b?.scope === "marketing" ? "marketing" : "site";
-      const email = String(b?.email || "").trim().toLowerCase();
+      const email = String(b?.email || "").trim().toLowerCase().slice(0,200);
       const recoveryEmail = String(env.ADMIN_RECOVERY_EMAIL || "emanueldetailchile@gmail.com").toLowerCase();
+      const now = Date.now();
+      const ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
+      const resetAttempt = await env.DB.prepare("SELECT window_start,count FROM admin_reset_attempts WHERE ip_hash=? AND scope=?").bind(ipHash,scope).first();
+      if (resetAttempt && Number(resetAttempt.window_start) > now-15*60*1000 && Number(resetAttempt.count) >= 3) {
+        return json({error:"Se alcanzó el límite de recuperación. Espera 15 minutos antes de intentarlo nuevamente."},429);
+      }
+      if (!resetAttempt || Number(resetAttempt.window_start) <= now-15*60*1000) {
+        await env.DB.prepare("INSERT INTO admin_reset_attempts(ip_hash,scope,window_start,count) VALUES(?,?,?,1) ON CONFLICT(ip_hash,scope) DO UPDATE SET window_start=excluded.window_start,count=1").bind(ipHash,scope,now).run();
+      } else {
+        await env.DB.prepare("UPDATE admin_reset_attempts SET count=count+1 WHERE ip_hash=? AND scope=?").bind(ipHash,scope).run();
+      }
       if (email !== recoveryEmail) return json({ok:true,message:"Si los datos corresponden, recibirás instrucciones en el correo registrado."});
       if (!env.RESEND_API_KEY) return json({error:"La recuperación por correo aún no está habilitada. Falta configurar RESEND_API_KEY en Cloudflare Preview."},503);
       const account = await env.DB.prepare("SELECT scope FROM admin_accounts WHERE scope=? AND email=?").bind(scope,recoveryEmail).first();
