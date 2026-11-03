@@ -18,7 +18,7 @@ bucket_name = "emanueldetail-imagenes"
 R2_PUBLIC_URL = "https://pub-b985f908dab04541837258217cdf0a0e.r2.dev"
 
 [env.preview.vars]
-R2_PUBLIC_URL = "https://pub-b985f908dab04541837258217cdf0a0e.r2.dev"
+R2_PUBLIC_URL = "https://pub-5585f4aa0da6468fb7f45044499da8df.r2.dev"
 ADMIN_RECOVERY_EMAIL = "emanueldetailchile@gmail.com"
 EMAIL_FROM = "EMANUELDETAIL <onboarding@resend.dev>"
 
@@ -27,9 +27,9 @@ binding = "AI"
 
 [[env.preview.d1_databases]]
 binding = "DB"
-database_name = "emanueldetail-db"
-database_id = "c7f39a9b-0825-46c6-bfd8-c960d48fcc44"
+database_name = "emanueldetail-marketing-preview-db"
+database_id = "d44f2cc3-610f-46f9-bd1e-9dbdbc1f088a"
 
 [[env.preview.r2_buckets]]
 binding = "IMAGES"
-bucket_name = "emanueldetail-imagenes"
+bucket_name = "emanueldetail-marketing-preview-images"
