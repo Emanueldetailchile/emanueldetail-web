@@ -506,6 +506,32 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     return json({ error: marketingPath ? "Debes iniciar sesión en Marketing IA." : "Debes iniciar sesión como administrador del sitio." }, 401);
   }
 
+  // Calendario editorial compartido entre dispositivos.
+  if (path === "marketing/calendar" && req.method === "GET") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_calendar (id TEXT PRIMARY KEY, payload TEXT NOT NULL, publish_date TEXT NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const { results = [] } = await env.DB.prepare("SELECT payload FROM marketing_calendar ORDER BY publish_date ASC LIMIT 500").all();
+    return json(results.map(row => { try { return JSON.parse(row.payload); } catch { return null; } }).filter(Boolean));
+  }
+  if (path === "marketing/calendar" && req.method === "POST") {
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_calendar (id TEXT PRIMARY KEY, payload TEXT NOT NULL, publish_date TEXT NOT NULL, updated_at INTEGER NOT NULL)").run();
+    let b = {}; try { b = await req.json(); } catch { return json({error:"JSON inválido."},400); }
+    const id = typeof b.id === "string" ? b.id : "";
+    const publishDate = typeof b.publishDate === "string" ? b.publishDate : "";
+    const title = typeof b.title === "string" ? b.title.trim() : "";
+    const description = typeof b.description === "string" ? b.description.trim() : "";
+    const statuses = new Set(["planificado","en_preparacion","publicado","cancelado"]);
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(publishDate) || !title || title.length > 140 || !description || description.length > 1500 || (b.status && !statuses.has(b.status))) return json({error:"Revisa fecha, título, contenido y estado del calendario."},400);
+    const item = {id,publishDate,title,description,channels:typeof b.channels==="string"?b.channels.trim().slice(0,180):"",status:statuses.has(b.status)?b.status:"planificado",updatedAt:new Date().toISOString()};
+    await env.DB.prepare("INSERT INTO marketing_calendar(id,payload,publish_date,updated_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,publish_date=excluded.publish_date,updated_at=excluded.updated_at").bind(id,JSON.stringify(item),publishDate,Date.now()).run();
+    return json({ok:true,item});
+  }
+  if (path.startsWith("marketing/calendar/") && req.method === "DELETE") {
+    const id = path.slice("marketing/calendar/".length);
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) return json({error:"ID no válido."},400);
+    await env.DB.prepare("DELETE FROM marketing_calendar WHERE id=?").bind(id).run();
+    return json({ok:true});
+  }
+
   // Contenido editorial centralizado: borradores y aprobaciones sincronizados entre dispositivos.
   if (path === "marketing/posts" && req.method === "GET") {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_posts (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
