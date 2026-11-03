@@ -36,6 +36,7 @@ async function ensureAuthTables(env) {
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_reset_tokens (token_hash TEXT PRIMARY KEY, scope TEXT NOT NULL, expires_at INTEGER NOT NULL, used_at INTEGER, created_at INTEGER NOT NULL)").run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_login_attempts (ip_hash TEXT NOT NULL, scope TEXT NOT NULL, window_start INTEGER NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(ip_hash,scope))").run();
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_reset_attempts (ip_hash TEXT NOT NULL, scope TEXT NOT NULL, window_start INTEGER NOT NULL, count INTEGER NOT NULL, PRIMARY KEY(ip_hash,scope))").run();
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_email_codes (id TEXT PRIMARY KEY, scope TEXT NOT NULL, email TEXT NOT NULL, code_hash TEXT NOT NULL, expires_at INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, used_at INTEGER, created_at INTEGER NOT NULL, ip_hash TEXT NOT NULL)").run();
 }
 async function sessionInfo(req, env, scope) {
   if (!env.DB) return null;
@@ -76,6 +77,42 @@ export async function onRequest(context) {
       const scope = url.searchParams.get("scope") === "marketing" ? "marketing" : "site";
       const info = await sessionInfo(req,env,scope);
       return json({ok:true,loggedIn:!!info,mustChange:!!info?.mustChange,scope});
+    }
+    if (path === "auth/request-code" && req.method === "POST") {
+      const b = await body();
+      const scope = b?.scope === "marketing" ? "marketing" : "site";
+      const email = String(env.ADMIN_RECOVERY_EMAIL || "").trim().toLowerCase();
+      if (!email || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) return json({error:"Falta configurar el correo administrador en Preview."},503);
+      if (!env.RESEND_API_KEY) return json({error:"Falta configurar el envío de correo en Preview."},503);
+      if (!env.EMAIL_FROM || !String(env.EMAIL_FROM).includes("@")) return json({error:"Falta configurar el remitente verificado de correo en Preview."},503);
+      const now = Date.now(), ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
+      const recent = await env.DB.prepare("SELECT COUNT(*) AS total FROM admin_email_codes WHERE scope=? AND ip_hash=? AND created_at>?").bind(scope,ipHash,now-15*60*1000).first();
+      if (Number(recent?.total || 0) >= 3) return json({error:"Límite alcanzado. Espera 15 minutos."},429);
+      const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6,"0");
+      const id = randomToken(), codeHash = await sha256(id + ":" + code);
+      await env.DB.prepare("UPDATE admin_email_codes SET used_at=? WHERE scope=? AND used_at IS NULL").bind(now,scope).run();
+      await env.DB.prepare("INSERT INTO admin_email_codes(id,scope,email,code_hash,expires_at,attempts,used_at,created_at,ip_hash) VALUES(?,?,?,?,?,0,NULL,?,?)").bind(id,scope,email,codeHash,now+10*60*1000,now,ipHash).run();
+      const sent = await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+env.RESEND_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({from:env.EMAIL_FROM,to:[email],subject:"Código de acceso · EMANUELDETAIL",html:"<div style='font-family:Arial,sans-serif;background:#111;color:#fff;padding:28px'><h2 style='color:#d4af37'>EMANUELDETAIL</h2><p>Tu código de acceso a Marketing IA es:</p><p style='font-size:32px;letter-spacing:8px;font-weight:bold'>"+code+"</p><p>Vence en 10 minutos. No lo compartas con nadie.</p></div>"})});
+      if (!sent.ok) { await env.DB.prepare("DELETE FROM admin_email_codes WHERE id=?").bind(id).run(); return json({error:"No se pudo enviar el correo. Revisa Resend y el remitente verificado."},502); }
+      return json({ok:true,message:"Código enviado al correo administrador configurado."});
+    }
+    if (path === "auth/verify-code" && req.method === "POST") {
+      const b = await body();
+      const scope = b?.scope === "marketing" ? "marketing" : "site";
+      const code = String(b?.code || "").trim();
+      if (!/^\\d{6}$/.test(code)) return json({error:"Ingresa el código de 6 dígitos."},400);
+      const email = String(env.ADMIN_RECOVERY_EMAIL || "").trim().toLowerCase();
+      const now = Date.now(), ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
+      const row = await env.DB.prepare("SELECT id,code_hash,attempts FROM admin_email_codes WHERE scope=? AND email=? AND ip_hash=? AND expires_at>? AND used_at IS NULL ORDER BY created_at DESC LIMIT 1").bind(scope,email,ipHash,now).first();
+      if (!row || Number(row.attempts)>=5) return json({error:"Código vencido o inválido. Solicita uno nuevo."},401);
+      const valid = await sha256(row.id + ":" + code) === row.code_hash;
+      if (!valid) { await env.DB.prepare("UPDATE admin_email_codes SET attempts=attempts+1 WHERE id=?").bind(row.id).run(); return json({error:"Código incorrecto."},401); }
+      await env.DB.prepare("UPDATE admin_email_codes SET used_at=? WHERE id=?").bind(now,row.id).run();
+      await env.DB.prepare("INSERT OR IGNORE INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?, '', '',0,?,?)").bind(scope,email,now,now).run();
+      await env.DB.prepare("UPDATE admin_accounts SET email=?,must_change=0,updated_at=? WHERE scope=?").bind(email,now,scope).run();
+      const issued = await issueSession(env,scope);
+      await env.DB.prepare("DELETE FROM admin_login_attempts WHERE scope=?").bind(scope).run();
+      return json({ok:true,scope,mustChange:false},200,{"Set-Cookie":issued.cookie});
     }
     if (path === "auth/login" && req.method === "POST") {
       const b = await body();
