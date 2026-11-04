@@ -725,6 +725,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
   }
 
   if (path === "promotions" && req.method === "GET") {
+    const isMarketingAdmin = await authorized(req, env, "marketing");
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     try { await env.DB.prepare("ALTER TABLE promotions ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'").run(); } catch {}
     if (await authorized(req, env, "marketing")) {
@@ -757,11 +758,13 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
 
   // Calendario editorial compartido entre dispositivos.
   if (path === "marketing/calendar" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_calendar (id TEXT PRIMARY KEY, payload TEXT NOT NULL, publish_date TEXT NOT NULL, updated_at INTEGER NOT NULL)").run();
     const { results = [] } = await env.DB.prepare("SELECT payload FROM marketing_calendar ORDER BY publish_date ASC LIMIT 500").all();
     return json(results.map(row => { try { return JSON.parse(row.payload); } catch { return null; } }).filter(Boolean));
   }
   if (path === "marketing/calendar" && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_calendar (id TEXT PRIMARY KEY, payload TEXT NOT NULL, publish_date TEXT NOT NULL, updated_at INTEGER NOT NULL)").run();
     let b = {}; try { b = await req.json(); } catch { return json({error:"JSON inválido."},400); }
     const id = typeof b.id === "string" ? b.id : "";
@@ -775,6 +778,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     return json({ok:true,item});
   }
   if (path.startsWith("marketing/calendar/") && req.method === "DELETE") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     const id = path.slice("marketing/calendar/".length);
     if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) return json({error:"ID no válido."},400);
     await env.DB.prepare("DELETE FROM marketing_calendar WHERE id=?").bind(id).run();
@@ -783,11 +787,13 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
 
   // Contenido editorial centralizado: borradores y aprobaciones sincronizados entre dispositivos.
   if (path === "marketing/posts" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_posts (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     const { results = [] } = await env.DB.prepare("SELECT payload FROM marketing_posts ORDER BY updated_at DESC LIMIT 500").all();
     return json(results.map(row => { try { return JSON.parse(row.payload); } catch { return null; } }).filter(Boolean));
   }
   if (path === "marketing/posts" && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_posts (id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     let b = {}; try { b = await req.json(); } catch { return json({error:"JSON inválido."},400); }
     const id = typeof b.id === "string" ? b.id.slice(0,80) : "";
@@ -804,6 +810,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     return json({ok:true,post:payload},200);
   }
   if (path.startsWith("marketing/posts/") && req.method === "DELETE") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     const id = path.slice("marketing/posts/".length);
     if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) return json({error:"ID no válido."},400);
     await env.DB.prepare("DELETE FROM marketing_posts WHERE id=?").bind(id).run();
@@ -811,11 +818,13 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
   }
 
   if (path === "bookings" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS service_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, phone TEXT NOT NULL, service TEXT NOT NULL, commune TEXT NOT NULL, booking_date TEXT NOT NULL, start_time TEXT NOT NULL, notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pendiente', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     const { results = [] } = await env.DB.prepare("SELECT * FROM service_bookings ORDER BY booking_date ASC,start_time ASC LIMIT 300").all();
     return json(results);
   }
   if (path.startsWith("bookings/") && req.method === "PATCH") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     const id = Number(path.split("/")[1]);
     if (!Number.isInteger(id) || id < 1) return json({ error: "ID no válido." }, 400);
     let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
@@ -827,10 +836,16 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
   if (path === "promotions" && req.method === "GET") {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
     try { await env.DB.prepare("ALTER TABLE promotions ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'").run(); } catch {}
-    const { results = [] } = await env.DB.prepare("SELECT * FROM promotions ORDER BY updated_at DESC LIMIT 200").all();
+    if (isMarketingAdmin) {
+      const { results = [] } = await env.DB.prepare("SELECT * FROM promotions ORDER BY updated_at DESC LIMIT 200").all();
+      return json(results);
+    }
+    const today = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    const { results = [] } = await env.DB.prepare("SELECT id,title,description,price,starts_at,ends_at,max_uses,used_count,code,audience FROM promotions WHERE audience IN ('all','web') AND status='activa' AND (starts_at IS NULL OR starts_at='' OR starts_at<=?) AND (ends_at IS NULL OR ends_at='' OR ends_at>=?) AND (max_uses IS NULL OR used_count<max_uses) ORDER BY created_at DESC").bind(today,today).all();
     return json(results);
   }
   if (path === "promotions" && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
     const title = typeof b.title === "string" ? b.title.trim().slice(0,120) : "";
     const description = typeof b.description === "string" ? b.description.trim().slice(0,700) : "";
@@ -844,6 +859,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     return json({ ok: true, id: result.meta.last_row_id }, 201);
   }
   if (path.startsWith("promotions/") && req.method === "PATCH") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     const id = Number(path.split("/")[1]);
     if (!Number.isInteger(id) || id < 1) return json({ error: "ID no válido." }, 400);
     let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
@@ -854,6 +870,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
   }
 
   if (path === "store-config" && req.method === "PUT") {
+    if (!(await authorized(req, env, "site"))) return json({error:"Debes iniciar sesión como administrador del sitio."},401);
     let body = {};
     try { body = await req.json(); } catch { return json({ error: "JSON inválido" }, 400); }
     const fields = ["bankName","accountHolder","taxId","accountType","accountNumber","bankEmail"];
@@ -1014,6 +1031,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
   }
 
   if (path.startsWith("leads/") && req.method === "PATCH") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketing_leads (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
