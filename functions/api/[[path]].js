@@ -1017,6 +1017,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`).run();
+    try { await env.DB.prepare("ALTER TABLE marketing_leads ADD COLUMN next_followup_at TEXT").run(); } catch {}
     let b = {};
     try { b = await req.json(); } catch { return json({ error: "JSON inválido" }, 400); }
     const name = typeof b.name === "string" ? b.name.trim().slice(0,120) : "";
@@ -1047,6 +1048,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`).run();
+    try { await env.DB.prepare("ALTER TABLE marketing_leads ADD COLUMN next_followup_at TEXT").run(); } catch {}
     const id = Number(path.split("/")[1]);
     if (!Number.isInteger(id) || id < 1) return json({ error: "ID no válido." }, 400);
     let b = {};
