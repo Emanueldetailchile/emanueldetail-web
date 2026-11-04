@@ -82,10 +82,10 @@ function persist(){try{localStorage.setItem(KEY,JSON.stringify(posts));renderSta
 const crmSources={whatsapp:'WhatsApp Business',facebook:'Facebook Empresa',instagram:'Instagram Empresa',marketplace_1:'Marketplace 1',marketplace_2:'Marketplace 2',web:'Página web',otro:'Otro'};
 const crmStatuses={nuevo:'Nuevo',contactado:'Contactado',cotizado:'Cotizado',agendado:'Agendado',ganado:'Ganado',perdido:'Perdido'};
 async function crmApi(path,options={}){const headers={...(options.headers||{})};if(options.body)headers['Content-Type']='application/json';const r=await fetch('/api/'+path,{...options,credentials:'same-origin',headers});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(r.status===401){authReady=false;logoutAdmin();throw new Error('Sesión no autorizada. Ingresa nuevamente.')}if(!r.ok)throw new Error(d.error||'Error de servidor');return d}
-const R2_MEDIA_PREFIX='https://pub-b985f908dab04541837258217cdf0a0e.r2.dev/marketing/';
+const R2_MEDIA_PREFIXES=['https://pub-b985f908dab04541837258217cdf0a0e.r2.dev/marketing/','https://pub-5585f4aa0da6468fb7f45044499da8df.r2.dev/marketing/'];
 async function uploadMarketingPhoto(photo){
  if(typeof photo!=='string'||!photo)return '';
- if(photo.startsWith(R2_MEDIA_PREFIX))return photo;
+ if(R2_MEDIA_PREFIXES.some(prefix=>photo.startsWith(prefix)))return photo;
  if(!/^data:image\/(jpeg|png|webp);base64,/.test(photo))return '';
  const blob=await (await fetch(photo)).blob();
  const form=new FormData();form.append('file',blob,'marketing-image.'+(blob.type==='image/png'?'png':blob.type==='image/webp'?'webp':'jpg'));
