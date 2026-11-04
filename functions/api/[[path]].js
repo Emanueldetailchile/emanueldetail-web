@@ -68,6 +68,57 @@ export async function onRequest(context) {
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/api\/?/, "");
 
+  // Webhook oficial de WhatsApp Cloud API (Meta).
+  // Requiere WHATSAPP_VERIFY_TOKEN y META_APP_SECRET como secretos de Pages.
+  if (path === "webhooks/whatsapp") {
+    if (req.method === "GET") {
+      const mode = url.searchParams.get("hub.mode") || "";
+      const token = url.searchParams.get("hub.verify_token") || "";
+      const challenge = url.searchParams.get("hub.challenge") || "";
+      if (mode !== "subscribe" || !env.WHATSAPP_VERIFY_TOKEN || token !== env.WHATSAPP_VERIFY_TOKEN || !challenge) {
+        return new Response("Forbidden", { status: 403 });
+      }
+      return new Response(challenge, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+    }
+
+    if (req.method === "POST") {
+      if (!env.DB || !env.META_APP_SECRET) return json({ error: "Webhook no configurado." }, 503);
+      const signature = req.headers.get("x-hub-signature-256") || "";
+      if (!/^sha256=[a-f0-9]{64}$/i.test(signature)) return json({ error: "Firma no válida." }, 401);
+      const raw = await req.text();
+      const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.META_APP_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      const digest = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw)));
+      const expected = "sha256=" + Array.from(digest).map(x => x.toString(16).padStart(2, "0")).join("");
+      let mismatch = expected.length ^ signature.length;
+      for (let i = 0; i < Math.min(expected.length, signature.length); i++) mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+      if (mismatch !== 0) return json({ error: "Firma no válida." }, 401);
+
+      let payload;
+      try { payload = JSON.parse(raw); } catch { return json({ error: "JSON inválido." }, 400); }
+      if (payload.object !== "whatsapp_business_account" || !Array.isArray(payload.entry)) return json({ error: "Evento no reconocido." }, 400);
+
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS whatsapp_webhook_events (event_id TEXT PRIMARY KEY, phone_number_id TEXT NOT NULL DEFAULT '', from_number TEXT NOT NULL DEFAULT '', message_type TEXT NOT NULL DEFAULT '', message_text TEXT NOT NULL DEFAULT '', payload TEXT NOT NULL, received_at INTEGER NOT NULL)").run();
+      const now = Date.now();
+      for (const entry of payload.entry) {
+        for (const change of (Array.isArray(entry.changes) ? entry.changes : [])) {
+          const value = change?.value || {};
+          const phoneNumberId = String(value.metadata?.phone_number_id || "").slice(0, 100);
+          for (const message of (Array.isArray(value.messages) ? value.messages : [])) {
+            const eventId = String(message.id || crypto.randomUUID()).slice(0, 180);
+            const from = String(message.from || "").slice(0, 40);
+            const type = String(message.type || "").slice(0, 40);
+            const messageText = type === "text" ? String(message.text?.body || "").slice(0, 4000) : "";
+            await env.DB.prepare("INSERT OR IGNORE INTO whatsapp_webhook_events(event_id,phone_number_id,from_number,message_type,message_text,payload,received_at) VALUES(?,?,?,?,?,?,?)")
+              .bind(eventId, phoneNumberId, from, type, messageText, JSON.stringify({ entry: entry.id, change: change.field, message }), now).run();
+          }
+        }
+      }
+      return new Response("EVENT_RECEIVED", { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+    }
+    return json({ error: "Método no permitido." }, 405, { "allow": "GET, POST" });
+  }
+
+
 
   if (path.startsWith("auth/")) {
     if (!env.DB) return json({error:"Base de datos no disponible."},503);
