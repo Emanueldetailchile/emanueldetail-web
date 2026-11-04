@@ -120,6 +120,70 @@ export async function onRequest(context) {
 
 
 
+
+  // Instagram OAuth (Meta Unified Login) — Preview only until validated.
+  if (path === "instagram/connect" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
+    if (!env.DB || !env.META_APP_ID || !env.META_INSTAGRAM_CONFIG_ID) {
+      return json({ error: "Falta configurar META_APP_ID o META_INSTAGRAM_CONFIG_ID en Cloudflare Pages Preview." }, 503);
+    }
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS instagram_oauth_states (state TEXT PRIMARY KEY, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)").run();
+    const state = randomToken();
+    const now = Date.now();
+    await env.DB.prepare("DELETE FROM instagram_oauth_states WHERE expires_at < ?").bind(now).run();
+    await env.DB.prepare("INSERT INTO instagram_oauth_states(state,expires_at,created_at) VALUES(?,?,?)").bind(state, now + 10 * 60 * 1000, now).run();
+    const redirectUri = new URL("/api/instagram/callback", url.origin).toString();
+    const auth = new URL("https://www.facebook.com/v24.0/dialog/oauth");
+    auth.searchParams.set("client_id", String(env.META_APP_ID));
+    auth.searchParams.set("redirect_uri", redirectUri);
+    auth.searchParams.set("config_id", String(env.META_INSTAGRAM_CONFIG_ID));
+    auth.searchParams.set("response_type", "code");
+    auth.searchParams.set("state", state);
+    return Response.redirect(auth.toString(), 302);
+  }
+
+  if (path === "instagram/callback" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return new Response("Sesión de Marketing IA vencida. Inicia sesión y vuelve a conectar Instagram.", { status: 401 });
+    if (!env.DB || !env.META_APP_ID || !env.META_APP_SECRET) return new Response("Falta configurar META_APP_ID o META_APP_SECRET en Cloudflare Pages Preview.", { status: 503 });
+    const oauthError = url.searchParams.get("error_description") || url.searchParams.get("error");
+    if (oauthError) return new Response("Instagram no autorizó la conexión: " + String(oauthError).slice(0, 500), { status: 400 });
+    const state = url.searchParams.get("state") || "";
+    const code = url.searchParams.get("code") || "";
+    if (!state || !code) return new Response("Respuesta OAuth incompleta.", { status: 400 });
+    const now = Date.now();
+    const saved = await env.DB.prepare("SELECT state FROM instagram_oauth_states WHERE state=? AND expires_at>?").bind(state, now).first();
+    if (!saved) return new Response("Estado OAuth inválido o vencido. Vuelve a iniciar la conexión desde Marketing IA.", { status: 400 });
+    await env.DB.prepare("DELETE FROM instagram_oauth_states WHERE state=?").bind(state).run();
+    const redirectUri = new URL("/api/instagram/callback", url.origin).toString();
+    const tokenUrl = new URL("https://graph.facebook.com/v24.0/oauth/access_token");
+    tokenUrl.searchParams.set("client_id", String(env.META_APP_ID));
+    tokenUrl.searchParams.set("client_secret", String(env.META_APP_SECRET));
+    tokenUrl.searchParams.set("redirect_uri", redirectUri);
+    tokenUrl.searchParams.set("code", code);
+    const tokenResponse = await fetch(tokenUrl.toString(), { headers: { "accept": "application/json" } });
+    const tokenData = await tokenResponse.json().catch(() => ({}));
+    if (!tokenResponse.ok || !tokenData.access_token) {
+      return new Response("Meta no entregó un token válido. " + String(tokenData.error?.message || "Revisa la configuración de inicio de sesión." ).slice(0, 500), { status: 502 });
+    }
+    const rawKey = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(env.META_APP_SECRET) + ":emanueldetail-instagram-token-v1"));
+    const key = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["encrypt"]);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(String(tokenData.access_token)));
+    const b64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS instagram_connections (id INTEGER PRIMARY KEY CHECK(id=1), access_token_ciphertext TEXT NOT NULL, access_token_iv TEXT NOT NULL, token_type TEXT NOT NULL DEFAULT 'bearer', expires_in INTEGER, connected_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    await env.DB.prepare("INSERT INTO instagram_connections(id,access_token_ciphertext,access_token_iv,token_type,expires_in,connected_at,updated_at) VALUES(1,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET access_token_ciphertext=excluded.access_token_ciphertext,access_token_iv=excluded.access_token_iv,token_type=excluded.token_type,expires_in=excluded.expires_in,connected_at=excluded.connected_at,updated_at=excluded.updated_at")
+      .bind(b64(encrypted), b64(iv), String(tokenData.token_type || "bearer"), Number(tokenData.expires_in || 0) || null, now, now).run();
+    return new Response("<!doctype html><html lang='es'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Instagram conectado</title><body style='font-family:Arial,sans-serif;background:#111;color:#fff;padding:32px'><h2 style='color:#d4af37'>EmanuelDetail MarketingIA</h2><p>Meta autorizó la conexión y el token quedó almacenado cifrado en la base de datos de pruebas.</p><p>Puedes cerrar esta ventana y volver al panel.</p></body></html>", { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  }
+
+  if (path === "instagram/status" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
+    if (!env.DB) return json({ error: "Base de datos no disponible." }, 503);
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS instagram_connections (id INTEGER PRIMARY KEY CHECK(id=1), access_token_ciphertext TEXT NOT NULL, access_token_iv TEXT NOT NULL, token_type TEXT NOT NULL DEFAULT 'bearer', expires_in INTEGER, connected_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
+    const row = await env.DB.prepare("SELECT connected_at,updated_at,expires_in FROM instagram_connections WHERE id=1").first();
+    return json({ connected: !!row, connectedAt: row?.connected_at || null, updatedAt: row?.updated_at || null, expiresIn: row?.expires_in || null });
+  }
+
   if (path.startsWith("auth/")) {
     if (!env.DB) return json({error:"Base de datos no disponible."},503);
     await ensureAuthTables(env);
