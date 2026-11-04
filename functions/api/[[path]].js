@@ -119,6 +119,7 @@ export async function onRequest(context) {
   }
 
 
+  // Instagram Webhooks (Meta). Despliegue actualizado con el secreto de verificación disponible.
   // Instagram Webhooks (Meta). Usa INSTAGRAM_VERIFY_TOKEN o, como alternativa,
   // WHATSAPP_VERIFY_TOKEN para el desafío GET. POST valida la firma de Meta.
   if (path === "webhooks/instagram") {
