@@ -121,8 +121,11 @@ export async function onRequest(context) {
       const scope = b.scope === "marketing" ? "marketing" : "site";
       const password = typeof b.password === "string" ? b.password : "";
       if (!password || password.length > 200) return json({error:"Ingresa la clave temporal o tu contraseña."},400);
+      // Marketing IA may share the website's existing ADMIN_TOKEN.
+      // The secret must be configured separately in the Preview environment;
+      // Production secrets are not implicitly available to Preview.
       const bootstrapName = scope === "marketing" ? "MARKETING_ADMIN_BOOTSTRAP" : "SITE_ADMIN_BOOTSTRAP";
-      const bootstrap = String(env[bootstrapName] || "");
+      const bootstrap = String(env[bootstrapName] || (scope === "marketing" ? env.ADMIN_TOKEN : "") || "");
       const now = Date.now(), ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
       const attempt = await env.DB.prepare("SELECT window_start,count FROM admin_login_attempts WHERE ip_hash=? AND scope=?").bind(ipHash,scope).first();
       if (attempt && Number(attempt.window_start) > now-15*60*1000 && Number(attempt.count) >= 8) return json({error:"Demasiados intentos. Espera 15 minutos e inténtalo nuevamente."},429);
@@ -134,14 +137,17 @@ export async function onRequest(context) {
       const account = await env.DB.prepare("SELECT scope,email,password_hash,salt,must_change FROM admin_accounts WHERE scope=?").bind(scope).first();
       let mustChange = false;
       if (!account) {
-        if (!bootstrap) return json({error:"Falta configurar la clave provisional segura en Cloudflare Preview."},503);
+        if (!bootstrap) return json({error:"Falta configurar la clave del sitio web en los secretos de Cloudflare Preview."},503);
         if (password !== bootstrap) return json({error:"Clave incorrecta."},401);
         const email = String(env.ADMIN_RECOVERY_EMAIL || "emanueldetailchile@gmail.com").toLowerCase();
-        await env.DB.prepare("INSERT OR IGNORE INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?, '', '',1,?,?)").bind(scope,email,now,now).run();
-        mustChange = true;
+        const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
+        const hash = await passwordHash(password,salt);
+        await env.DB.prepare("INSERT OR IGNORE INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?,?,?,0,?,?)").bind(scope,email,hash,salt,now,now).run();
       } else if (Number(account.must_change) === 1) {
-        if (!bootstrap || password !== bootstrap) return json({error:"Debes usar la clave provisional para completar la configuración inicial."},401);
-        mustChange = true;
+        if (!bootstrap || password !== bootstrap) return json({error:"Debes ingresar la misma clave del sitio web para completar la configuración inicial."},401);
+        const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
+        const hash = await passwordHash(password,salt);
+        await env.DB.prepare("UPDATE admin_accounts SET password_hash=?,salt=?,must_change=0,updated_at=? WHERE scope=?").bind(hash,salt,now,scope).run();
       } else {
         const valid = account.salt && account.password_hash && await passwordHash(password,account.salt) === account.password_hash;
         if (!valid) return json({error:"Clave incorrecta."},401);
