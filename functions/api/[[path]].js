@@ -100,7 +100,7 @@ export async function onRequest(context) {
       const b = await body();
       const scope = b?.scope === "marketing" ? "marketing" : "site";
       const code = String(b?.code || "").trim();
-      if (!/^\\d{6}$/.test(code)) return json({error:"Ingresa el código de 6 dígitos."},400);
+      if (!/^\d{6}$/.test(code)) return json({error:"Ingresa el código de 6 dígitos."},400);
       const email = String(env.ADMIN_RECOVERY_EMAIL || "").trim().toLowerCase();
       const now = Date.now(), ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
       const row = await env.DB.prepare("SELECT id,code_hash,attempts FROM admin_email_codes WHERE scope=? AND email=? AND ip_hash=? AND expires_at>? AND used_at IS NULL ORDER BY created_at DESC LIMIT 1").bind(scope,email,ipHash,now).first();
