@@ -345,6 +345,8 @@ async function authLogout() {
     crmSync();
   }
 }
+$("authSendCodeButton")?.addEventListener("click",authSendCode);
+$("authVerifyCodeButton")?.addEventListener("click",authVerifyCode);
 $("authLoginButton")?.addEventListener("click",authLogin);
 $("authPassword")?.addEventListener("keydown",e=>{if(e.key==="Enter")authLogin();});
 $("authChangeButton")?.addEventListener("click",authChangePassword);
