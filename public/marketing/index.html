@@ -15,7 +15,7 @@ nav{display:flex;gap:8px;overflow:auto;padding:15px 0}nav button,.btn{border:1px
 .layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:16px}.panel{background:linear-gradient(145deg,#181818,#101010);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.panel h2{color:var(--gold2);font-size:18px;margin:0 0 14px}.field{display:grid;gap:6px;margin:12px 0}.field label{font-size:13px;color:#ddd}.field input,.field select,.field textarea{width:100%;background:#090909;border:1px solid #514323;color:#fff;border-radius:9px;padding:11px}.field textarea{min-height:105px;resize:vertical}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.platforms{display:flex;flex-wrap:wrap;gap:8px}.check{display:flex;align-items:center;gap:7px;border:1px solid #3d3422;padding:8px 10px;border-radius:9px;color:#ddd;font-size:13px}.preview{background:#080808;border:1px dashed #655027;border-radius:12px;padding:14px;min-height:250px;white-space:pre-wrap}.preview img{max-width:100%;max-height:260px;display:block;object-fit:contain;margin:0 auto 12px;border-radius:8px}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.btn:disabled{opacity:.45;cursor:not-allowed}.hint{font-size:12px;color:var(--muted)}.status{font-size:13px;color:var(--green);min-height:20px}.queue{display:grid;gap:10px}.post{border:1px solid #40351f;border-radius:12px;padding:12px;background:#0d0d0d}.posthead{display:flex;justify-content:space-between;gap:8px;align-items:center}.tag{font-size:11px;border:1px solid var(--line);padding:4px 7px;border-radius:99px;color:var(--gold2)}.post p{font-size:13px;color:#ddd;white-space:pre-wrap;max-height:100px;overflow:hidden}.danger{color:#f2a2a2;border-color:#633737}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.stat{background:#111;border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{display:block;font-size:24px;color:var(--gold2)}.stat span{font-size:12px;color:var(--muted)}.hidden{display:none!important}.notice{padding:11px 13px;border-left:3px solid var(--gold);background:#211b0e;color:#e9d9b2;border-radius:7px;font-size:12px;margin:12px 0}.crm-lead{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:10px;align-items:center;border:1px solid #40351f;border-radius:10px;padding:12px;background:#0d0d0d}.crm-lead strong{display:block;font-size:13px}.crm-lead small{display:block;color:var(--muted);font-size:11px}.crm-lead select{width:100%;background:#090909;color:#fff;border:1px solid #514323;border-radius:8px;padding:8px}.crm-lead-meta{font-size:11px;color:var(--muted)}@media(max-width:600px){.crm-lead{grid-template-columns:1fr 1fr}}
 @media(max-width:850px){.layout{grid-template-columns:1fr}}@media(max-width:520px){.shell{padding:12px}.top{align-items:flex-start}.logo{width:52px;height:52px}.pill{display:none}.two{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:9px}.stat b{font-size:20px}}
 .auth-gate{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at top,#30240f,#070707 65%)}.auth-card{width:min(440px,100%);padding:24px;border:1px solid var(--gold);border-radius:18px;background:#111;box-shadow:0 24px 80px #000a}.auth-card h2{color:var(--gold2);margin:0 0 8px}.auth-card p{color:var(--muted);font-size:13px}.auth-card input{width:100%;background:#090909;border:1px solid #514323;color:#fff;border-radius:9px;padding:12px;margin:7px 0 13px}.auth-card button{width:100%;margin:6px 0}.auth-link{background:none;border:0;color:var(--gold2);text-decoration:underline;padding:9px}</style></head>
-<body><div id="authGate" class="auth-gate"><div class="auth-card"><div id="authLoginPane"><h2>Acceso privado · EMANUELDETAIL</h2><p>Solicita un código de un solo uso al correo administrador y úsalo para entrar. No necesitas contraseña.</p><button class="btn primary" id="authSendCodeButton">Enviar código a mi correo</button><label for="authCode">Código de 6 dígitos</label><input id="authCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"><button class="btn primary" id="authVerifyCodeButton">Verificar e ingresar</button><p id="authMessage" role="status"></p></div><div id="authChangePane" class="hidden"><h2>Crea tu contraseña definitiva</h2><p>Este paso es obligatorio. Usa al menos 12 caracteres. Tu nueva contraseña se guardará con hash seguro.</p><label for="authNewPassword">Nueva contraseña</label><input id="authNewPassword" type="password" autocomplete="new-password"><label for="authConfirmPassword">Repite la contraseña</label><input id="authConfirmPassword" type="password" autocomplete="new-password"><button class="btn primary" id="authChangeButton">Guardar contraseña definitiva</button><p id="authChangeMessage" role="status"></p></div><div id="authForgotPane" class="hidden"><h2>Recuperar acceso</h2><p>Solicitaremos un enlace de recuperación al correo registrado.</p><label for="authEmail">Correo de recuperación</label><input id="authEmail" type="email" value="emanueldetailchile@gmail.com" autocomplete="email"><button class="btn primary" id="authRequestResetButton">Enviar enlace de recuperación</button><button class="auth-link" id="authBackButton" type="button">Volver al ingreso</button><p id="authResetMessage" role="status"></p></div><div id="authResetPane" class="hidden"><h2>Restablecer contraseña</h2><p>El enlace es de un solo uso y vence en 20 minutos.</p><label for="authResetPassword">Nueva contraseña</label><input id="authResetPassword" type="password" autocomplete="new-password"><label for="authResetConfirm">Repite la contraseña</label><input id="authResetConfirm" type="password" autocomplete="new-password"><button class="btn primary" id="authDoResetButton">Guardar nueva contraseña</button><p id="authDoResetMessage" role="status"></p></div></div></div><div class="shell hidden" id="adminShell">
+<body><div id="authGate" class="auth-gate"><div class="auth-card"><div id="authLoginPane"><h2>Acceso privado · EMANUELDETAIL</h2><p>Ingresa tu clave de acceso para administrar Marketing IA.</p><label for="authPassword">Contraseña</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña"><button class="btn primary" id="authLoginButton" type="button">Ingresar</button><p id="authMessage" role="status"></p></div><div id="authChangePane" class="hidden"><h2>Configura tu contraseña definitiva</h2><p>Este paso se realiza una sola vez. Usa al menos 12 caracteres. La clave provisional dejará de funcionar.</p><label for="authNewPassword">Nueva contraseña</label><input id="authNewPassword" type="password" autocomplete="new-password"><label for="authConfirmPassword">Repite la contraseña</label><input id="authConfirmPassword" type="password" autocomplete="new-password"><button class="btn primary" id="authChangeButton" type="button">Guardar contraseña definitiva</button><p id="authChangeMessage" role="status"></p></div></div></div><div class="shell hidden" id="adminShell">
 <header class="top"><img class="logo" src="/assets/logo-emanueldetail.png" alt="Logo EmanuelDetail"><div class="brand"><h1>EMANUELDETAIL · MARKETING IA</h1><p>Centro de contenido, aprobación y estrategia orgánica</p></div><button id="installApp" class="install-btn" type="button">Instalar app</button><button id="globalLogout" class="btn" type="button">Cerrar sesión</button><span class="pill">VERSIÓN MVP 0.2</span></header>
 <nav><button class="active" data-tab="crear">Crear publicación</button><button data-tab="cola">Cola de aprobación</button><button data-tab="plan">Plan orgánico</button><button data-tab="agenda">Agenda</button><button data-tab="respuestas">Respuestas</button><button data-tab="crm">CRM / Clientes</button><button data-tab="promociones">Promociones</button><button data-tab="datos">Datos y respaldo</button></nav>
 <section id="tab-crear">
@@ -244,10 +244,10 @@ $('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{
 renderStats();renderQueue();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/marketing/sw.js').catch(()=>{}));
 
-/* AUTH FLOW PATCH */
+/* PASSWORD-ONLY AUTH: no email, OTP ni Resend */
 const authMessage = (id, message) => { const el = $(id); if (el) el.textContent = message || ""; };
 function authPane(name) {
-  ["authLoginPane","authChangePane","authForgotPane","authResetPane"].forEach(id => $(id)?.classList.toggle("hidden", id !== name));
+  ["authLoginPane","authChangePane"].forEach(id => $(id)?.classList.toggle("hidden", id !== name));
 }
 function authShowApp() {
   authReady = true;
@@ -258,116 +258,54 @@ function authShowApp() {
 }
 async function authRequest(path, payload = {}) {
   const response = await fetch("/api/auth/" + path, {
-    method: "POST", credentials: "same-origin",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({...payload, scope:"marketing"})
+    method:"POST", credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({...payload,scope:"marketing"})
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "No se pudo completar la operación (" + response.status + ").");
+  const data = await response.json().catch(()=>({}));
+  if (!response.ok) throw new Error(data.error || "No se pudo completar el ingreso ("+response.status+").");
   return data;
 }
-async function authSendCode() {
-  const button = $("authSendCodeButton");
-  button.disabled = true; button.textContent = "Enviando código…";
-  authMessage("authMessage","");
+async function authLogin() {
+  const button=$("authLoginButton"), password=$("authPassword")?.value || "";
+  if(!password){authMessage("authMessage","Ingresa tu contraseña.");return;}
+  button.disabled=true;button.textContent="Verificando…";authMessage("authMessage","");
   try {
-    const data = await authRequest("request-code",{});
-    authMessage("authMessage",data.message || "Código enviado. Revisa tu correo.");
-  } catch (error) { authMessage("authMessage",error.message); }
-  finally { button.disabled = false; button.textContent = "Enviar código a mi correo"; }
-}
-async function authVerifyCode() {
-  const button = $("authVerifyCodeButton");
-  const code = $("authCode").value.trim();
-  if (!/^\d{6}$/.test(code)) { authMessage("authMessage","Ingresa el código de 6 dígitos."); return; }
-  button.disabled = true; button.textContent = "Verificando…";
-  try {
-    await authRequest("verify-code",{code});
-    $("authCode").value = "";
-    authShowApp();
-  } catch (error) { authMessage("authMessage",error.message); }
-  finally { button.disabled = false; button.textContent = "Verificar e ingresar"; }
+    const data=await authRequest("login",{password});
+    $("authPassword").value="";
+    if(data.mustChange) authPane("authChangePane");
+    else authShowApp();
+  } catch(error) { authMessage("authMessage",error.message); }
+  finally { button.disabled=false;button.textContent="Ingresar"; }
 }
 async function authChangePassword() {
-  const button = $("authChangeButton");
-  const password = $("authNewPassword").value;
-  const confirm = $("authConfirmPassword").value;
-  if (password.length < 12) { authMessage("authChangeMessage","La contraseña debe tener al menos 12 caracteres."); return; }
-  if (password !== confirm) { authMessage("authChangeMessage","Las contraseñas no coinciden."); return; }
-  button.disabled = true; button.textContent = "Guardando…";
+  const button=$("authChangeButton"),password=$("authNewPassword").value,confirm=$("authConfirmPassword").value;
+  if(password.length<12){authMessage("authChangeMessage","La contraseña debe tener al menos 12 caracteres.");return;}
+  if(password!==confirm){authMessage("authChangeMessage","Las contraseñas no coinciden.");return;}
+  button.disabled=true;button.textContent="Guardando…";
   try {
-    await authRequest("change-password",{password});
-    $("authNewPassword").value = ""; $("authConfirmPassword").value = "";
-    authMessage("authChangeMessage","Contraseña definitiva guardada. La clave provisional dejó de funcionar.");
+    const data=await authRequest("change-password",{password});
+    $("authNewPassword").value="";$("authConfirmPassword").value="";
+    authMessage("authChangeMessage",data.message || "Contraseña definitiva guardada.");
     authShowApp();
-  } catch (error) {
-    authMessage("authChangeMessage",error.message);
-  } finally {
-    button.disabled = false; button.textContent = "Guardar contraseña definitiva";
-  }
-}
-async function authForgot() {
-  const email = $("authEmail").value.trim();
-  if (!email) { authMessage("authResetMessage","Ingresa el correo de recuperación."); return; }
-  const button = $("authRequestResetButton"); button.disabled = true; button.textContent = "Enviando…";
-  try {
-    const data = await authRequest("request-reset",{email});
-    authMessage("authResetMessage",data.message || "Si los datos corresponden, recibirás instrucciones en el correo registrado.");
-  } catch (error) { authMessage("authResetMessage",error.message); }
-  finally { button.disabled = false; button.textContent = "Enviar enlace de recuperación"; }
-}
-async function authDoReset() {
-  const params = new URLSearchParams(location.search);
-  const token = params.get("reset") || "";
-  const password = $("authResetPassword").value;
-  const confirm = $("authResetConfirm").value;
-  if (!token) { authMessage("authDoResetMessage","El enlace no contiene un token válido. Solicita uno nuevo."); return; }
-  if (password.length < 12) { authMessage("authDoResetMessage","La contraseña debe tener al menos 12 caracteres."); return; }
-  if (password !== confirm) { authMessage("authDoResetMessage","Las contraseñas no coinciden."); return; }
-  const button = $("authDoResetButton"); button.disabled = true; button.textContent = "Guardando…";
-  try {
-    const data = await authRequest("reset-password",{token,password});
-    authMessage("authDoResetMessage",data.message || "Contraseña actualizada. Ya puedes iniciar sesión.");
-    $("authResetPassword").value = ""; $("authResetConfirm").value = "";
-    history.replaceState({}, "", location.pathname);
-    setTimeout(() => authPane("authLoginPane"), 1800);
-  } catch (error) { authMessage("authDoResetMessage",error.message); }
-  finally { button.disabled = false; button.textContent = "Guardar nueva contraseña"; }
+  } catch(error){authMessage("authChangeMessage",error.message);}
+  finally{button.disabled=false;button.textContent="Guardar contraseña definitiva";}
 }
 async function authLogout() {
   try { await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({scope:"marketing"})}); }
   finally {
-    authReady = false;
-    $("adminShell")?.classList.add("hidden");
-    $("authGate")?.classList.remove("hidden");
-    authPane("authLoginPane");
-    authMessage("authMessage","Sesión cerrada.");
-    crmSync();
+    authReady=false;$("adminShell")?.classList.add("hidden");$("authGate")?.classList.remove("hidden");
+    $("authPassword").value="";authPane("authLoginPane");authMessage("authMessage","Sesión cerrada.");crmSync();
   }
 }
-$("authSendCodeButton")?.addEventListener("click",authSendCode);
-$("authVerifyCodeButton")?.addEventListener("click",authVerifyCode);
 $("authLoginButton")?.addEventListener("click",authLogin);
 $("authPassword")?.addEventListener("keydown",e=>{if(e.key==="Enter")authLogin();});
 $("authChangeButton")?.addEventListener("click",authChangePassword);
-$("authForgotButton")?.addEventListener("click",()=>authPane("authForgotPane"));
-$("authBackButton")?.addEventListener("click",()=>authPane("authLoginPane"));
-$("authRequestResetButton")?.addEventListener("click",authForgot);
-$("authDoResetButton")?.addEventListener("click",authDoReset);
 $("globalLogout")?.addEventListener("click",authLogout);
 (async function authInit(){
-  const params = new URLSearchParams(location.search);
-  if (params.has("reset")) { authPane("authResetPane"); return; }
   try {
-    const response = await fetch("/api/auth/me?scope=marketing",{credentials:"same-origin",cache:"no-store"});
-    const data = await response.json();
-    if (response.ok && data.loggedIn) {
-      if (data.mustChange) authPane("authChangePane");
-      else authShowApp();
-    }
-  } catch (error) {
-    authMessage("authMessage","No se pudo verificar la sesión. Recarga la página para intentar nuevamente.");
-  }
-})();
-
-</script></body></html>
+    const response=await fetch("/api/auth/me?scope=marketing",{credentials:"same-origin",cache:"no-store"});
+    const data=await response.json();
+    if(response.ok && data.loggedIn){if(data.mustChange)authPane("authChangePane");else authShowApp();}
+  } catch(error){authMessage("authMessage","No se pudo verificar la sesión. Recarga la página para intentar nuevamente.");}
+})();</script></body></html>
