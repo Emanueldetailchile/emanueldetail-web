@@ -83,6 +83,7 @@ export async function onRequest(context) {
       const scope = b?.scope === "marketing" ? "marketing" : "site";
       const email = String(env.ADMIN_RECOVERY_EMAIL || "").trim().toLowerCase();
       if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return json({error:"Falta configurar el correo administrador en Preview."},503);
+      // Resend secret is injected by Cloudflare Pages Preview at runtime.
       if (!env.RESEND_API_KEY) return json({error:"Falta configurar el envío de correo en Preview."},503);
       if (!env.EMAIL_FROM || !String(env.EMAIL_FROM).includes("@")) return json({error:"Falta configurar el remitente verificado de correo en Preview."},503);
       const now = Date.now(), ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
