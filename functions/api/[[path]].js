@@ -991,12 +991,14 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       source TEXT NOT NULL,
       service TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
+      next_followup_at TEXT,
       status TEXT NOT NULL DEFAULT 'nuevo',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`).run();
+    try { await env.DB.prepare("ALTER TABLE marketing_leads ADD COLUMN next_followup_at TEXT").run(); } catch {}
     const { results = [] } = await env.DB.prepare(
-      "SELECT id,name,contact,source,service,notes,status,created_at,updated_at FROM marketing_leads ORDER BY updated_at DESC LIMIT 250"
+      "SELECT id,name,contact,source,service,notes,next_followup_at,status,created_at,updated_at FROM marketing_leads ORDER BY CASE WHEN next_followup_at IS NULL OR next_followup_at='' THEN 1 ELSE 0 END, next_followup_at ASC, updated_at DESC LIMIT 250"
     ).all();
     return json(results);
   }
@@ -1010,6 +1012,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       source TEXT NOT NULL,
       service TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
+      next_followup_at TEXT,
       status TEXT NOT NULL DEFAULT 'nuevo',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -1025,8 +1028,8 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     if (!name || !source) return json({ error: "Nombre y canal de origen son obligatorios." }, 400);
     const now = Date.now();
     const result = await env.DB.prepare(
-      "INSERT INTO marketing_leads(name,contact,source,service,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,'nuevo',?,?)"
-    ).bind(name,contact,source,service,notes,now,now).run();
+      "INSERT INTO marketing_leads(name,contact,source,service,notes,next_followup_at,status,created_at,updated_at) VALUES(?,?,?,?,?,?, 'nuevo',?,?)"
+    ).bind(name,contact,source,service,notes,typeof b.next_followup_at==="string" && /^\d{4}-\d{2}-\d{2}$/.test(b.next_followup_at) ? b.next_followup_at : null,now,now).run();
     return json({ ok: true, id: result.meta.last_row_id }, 201);
   }
 
@@ -1039,6 +1042,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       source TEXT NOT NULL,
       service TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
+      next_followup_at TEXT,
       status TEXT NOT NULL DEFAULT 'nuevo',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -1051,11 +1055,15 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     if (b.status !== undefined && !statuses.has(b.status)) return json({ error: "Estado no válido." }, 400);
     const current = await env.DB.prepare("SELECT id FROM marketing_leads WHERE id=?").bind(id).first();
     if (!current) return json({ error: "Cliente potencial no encontrado." }, 404);
-    const fields = ["status","notes","service","contact"];
+    const fields = ["status","notes","service","contact","next_followup_at"];
     const sets = [], values = [];
     for (const field of fields) {
       if (b[field] !== undefined) {
         if (field === "status" && !statuses.has(b[field])) continue;
+        if (field === "next_followup_at") {
+          if (b[field] !== "" && b[field] !== null && (typeof b[field] !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b[field]))) return json({ error: "Fecha de seguimiento no válida." }, 400);
+          sets.push(field + "=?"); values.push(b[field] || null); continue;
+        }
         if (typeof b[field] !== "string") return json({ error: "Campo no válido: " + field }, 400);
         sets.push(field + "=?");
         values.push(b[field].trim().slice(0, field === "notes" ? 1200 : 160));
