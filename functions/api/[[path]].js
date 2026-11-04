@@ -305,6 +305,46 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     }
   }
 
+  if (path === "marketing/ai-reply" && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
+    if (!env.AI) return json({ error: "Workers AI no está disponible. Verifica el vínculo AI en Cloudflare Pages." }, 503);
+    let body = {};
+    try { body = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
+    const message = typeof body.message === "string" ? body.message.trim().slice(0, 1200) : "";
+    const channel = ["Marketplace 1","Marketplace 2","Facebook","Instagram","WhatsApp"].includes(body.channel) ? body.channel : "Otro canal";
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim().slice(0,80) : "";
+    if (!message) return json({ error: "Pega el mensaje del cliente." }, 400);
+    const system = `Eres el asistente comercial de EMANUELDETAIL, negocio de detailing automotriz en San Ramón, Santiago de Chile.
+MODO MIXTO: responde directamente preguntas frecuentes que puedas resolver con datos confirmados. Marca handoff=true para reclamos, negociación, solicitudes especiales, servicios no incluidos, datos insuficientes o cualquier duda. Nunca inventes disponibilidad ni confirmes reservas.
+CATÁLOGO CONFIRMADO:
+- Pack de limpieza de tapiz: promoción lanzamiento $30.000 (referencia $35.000); incluye cielo, asientos delanteros y traseros, piso y alfombras; duración estimada 1,5 a 2 horas.
+- Full interior: $50.000; incluye cielo, asientos, piso, maleta, puertas, tablero, plásticos y ductos de ventilación; no incluye vidrios ni carrocería; duración 3 a 5 horas según vehículo.
+- Limpieza superficial de motor a vapor: $20.000; no contempla desarme; duración 1 a 1,5 horas.
+ATENCIÓN: en el espacio de trabajo de San Ramón, con reserva previa. No hay servicio a domicilio. Horario lunes a jueves 10:00–18:30 y viernes 10:00–16:00. Sábados y domingos cerrado. Capacidad objetivo normalmente un servicio diario; máximo provisional dos si agenda y tiempos lo permiten.
+REGLAS: español chileno natural, breve y profesional. No solicites datos sensibles, contraseñas ni pagos. No prometas cupos, descuentos, resultados, garantías ni servicios no indicados. Si el cliente pregunta por disponibilidad, pide día preferido y servicio, aclarando que el equipo debe confirmar. Para otros trabajos, ofrece evaluación humana.
+Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":false,"handoff_reason":""}.`;
+    try {
+      const result = await env.AI.run("@cf/openai/gpt-oss-120b", {
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: "Canal: " + channel + "\\nCliente: " + (customerName || "No indicado") + "\\nMensaje recibido: " + message }
+        ],
+        max_tokens: 350
+      });
+      let raw = typeof result === "string" ? result : (result?.response || result?.result || result?.output_text || "");
+      if (!raw && result?.choices?.[0]?.message?.content) raw = result.choices[0].message.content;
+      if (!raw || typeof raw !== "string") throw new Error("empty_model_response");
+      let parsed;
+      try { parsed = JSON.parse(raw.replace(/^```(?:json)?/i, "").replace(/```\\s*$/, "").trim()); }
+      catch { parsed = { answer: raw.trim(), handoff: true, handoff_reason: "Respuesta requiere revisión humana" }; }
+      const answer = String(parsed.answer || "").slice(0, 1400);
+      if (!answer) throw new Error("empty_answer");
+      return json({ ok: true, answer, handoff: parsed.handoff === true, handoff_reason: String(parsed.handoff_reason || "").slice(0,180), channel, mode:"mixed", scope:"both", provider:"Cloudflare Workers AI" });
+    } catch {
+      return json({ error: "La IA no pudo procesar este mensaje. Inténtalo nuevamente o responde manualmente." }, 503);
+    }
+  }
+
   if (path === "marketing/upload" && req.method === "POST") {
     if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
     if (!env.IMAGES) return json({ error: "El almacenamiento de imágenes no está disponible." }, 503);
