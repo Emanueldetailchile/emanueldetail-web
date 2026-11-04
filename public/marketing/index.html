@@ -279,7 +279,7 @@ async function authSendCode() {
 async function authVerifyCode() {
   const button = $("authVerifyCodeButton");
   const code = $("authCode").value.trim();
-  if (!/^\\d{6}$/.test(code)) { authMessage("authMessage","Ingresa el código de 6 dígitos."); return; }
+  if (!/^\d{6}$/.test(code)) { authMessage("authMessage","Ingresa el código de 6 dígitos."); return; }
   button.disabled = true; button.textContent = "Verificando…";
   try {
     await authRequest("verify-code",{code});
