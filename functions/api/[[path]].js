@@ -119,6 +119,55 @@ export async function onRequest(context) {
   }
 
 
+  // Instagram Webhooks (Meta). Usa INSTAGRAM_VERIFY_TOKEN o, como alternativa,
+  // WHATSAPP_VERIFY_TOKEN para el desafío GET. POST valida la firma de Meta.
+  if (path === "webhooks/instagram") {
+    if (req.method === "GET") {
+      const mode = url.searchParams.get("hub.mode") || "";
+      const token = url.searchParams.get("hub.verify_token") || "";
+      const challenge = url.searchParams.get("hub.challenge") || "";
+      const expectedToken = env.INSTAGRAM_VERIFY_TOKEN || env.WHATSAPP_VERIFY_TOKEN || "";
+      if (mode !== "subscribe" || !expectedToken || token !== expectedToken || !challenge) {
+        return new Response("Forbidden", { status: 403 });
+      }
+      return new Response(challenge, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+    }
+
+    if (req.method === "POST") {
+      if (!env.DB || !env.META_APP_SECRET) return json({ error: "Webhook de Instagram no configurado." }, 503);
+      const signature = req.headers.get("x-hub-signature-256") || "";
+      if (!/^sha256=[a-f0-9]{64}$/i.test(signature)) return json({ error: "Firma no válida." }, 401);
+      const raw = await req.text();
+      const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.META_APP_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      const digest = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw)));
+      const expected = "sha256=" + Array.from(digest).map(x => x.toString(16).padStart(2, "0")).join("");
+      let mismatch = expected.length ^ signature.length;
+      for (let i = 0; i < Math.min(expected.length, signature.length); i++) mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+      if (mismatch !== 0) return json({ error: "Firma no válida." }, 401);
+
+      let payload;
+      try { payload = JSON.parse(raw); } catch { return json({ error: "JSON inválido." }, 400); }
+      if (payload.object !== "instagram" || !Array.isArray(payload.entry)) return json({ error: "Evento de Instagram no reconocido." }, 400);
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS instagram_webhook_events (event_id TEXT PRIMARY KEY, account_id TEXT NOT NULL DEFAULT '', event_type TEXT NOT NULL DEFAULT '', payload TEXT NOT NULL, received_at INTEGER NOT NULL)").run();
+      const now = Date.now();
+      for (const entry of payload.entry) {
+        const accountId = String(entry.id || "").slice(0, 100);
+        const events = [
+          ...(Array.isArray(entry.messaging) ? entry.messaging.map(event => ({ type: "messaging", event })) : []),
+          ...(Array.isArray(entry.changes) ? entry.changes.map(event => ({ type: String(event.field || "change").slice(0, 100), event })) : [])
+        ];
+        for (const item of events) {
+          const eventId = String(item.event?.message?.mid || item.event?.id || crypto.randomUUID()).slice(0, 180);
+          await env.DB.prepare("INSERT OR IGNORE INTO instagram_webhook_events(event_id,account_id,event_type,payload,received_at) VALUES(?,?,?,?,?)")
+            .bind(eventId, accountId, item.type, JSON.stringify(item.event), now).run();
+        }
+      }
+      return new Response("EVENT_RECEIVED", { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+    }
+    return json({ error: "Método no permitido." }, 405, { "allow": "GET, POST" });
+  }
+
+
 
 
   // Instagram OAuth (Meta Unified Login) — Preview only until validated.
