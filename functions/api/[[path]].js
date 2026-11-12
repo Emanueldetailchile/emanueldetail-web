@@ -301,18 +301,16 @@ export async function onRequest(context) {
       }
       const account = await env.DB.prepare("SELECT scope,email,password_hash,salt,must_change FROM admin_accounts WHERE scope=?").bind(scope).first();
       let mustChange = false;
+      const bootstrapLabel = scope === "marketing" ? "clave provisional de Marketing IA" : "clave provisional del sitio";
       if (!account) {
-        if (!bootstrap) return json({error:"Falta configurar la clave del sitio web en los secretos de Cloudflare Preview."},503);
+        if (!bootstrap) return json({error:"Falta configurar la " + bootstrapLabel + " en los secretos de Cloudflare Preview."},503);
         if (password !== bootstrap) return json({error:"Clave incorrecta."},401);
         const email = String(env.ADMIN_RECOVERY_EMAIL || "emanueldetailchile@gmail.com").toLowerCase();
-        const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
-        const hash = await passwordHash(password,salt);
-        await env.DB.prepare("INSERT OR IGNORE INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?,?,?,0,?,?)").bind(scope,email,hash,salt,now,now).run();
+        await env.DB.prepare("INSERT OR IGNORE INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?, '', '',1,?,?)").bind(scope,email,now,now).run();
+        mustChange = true;
       } else if (Number(account.must_change) === 1) {
-        if (!bootstrap || password !== bootstrap) return json({error:"Debes ingresar la misma clave del sitio web para completar la configuración inicial."},401);
-        const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
-        const hash = await passwordHash(password,salt);
-        await env.DB.prepare("UPDATE admin_accounts SET password_hash=?,salt=?,must_change=0,updated_at=? WHERE scope=?").bind(hash,salt,now,scope).run();
+        if (!bootstrap || password !== bootstrap) return json({error:"Debes ingresar la misma " + bootstrapLabel + " para completar la configuración inicial."},401);
+        mustChange = true;
       } else {
         const valid = account.salt && account.password_hash && await passwordHash(password,account.salt) === account.password_hash;
         if (!valid) return json({error:"Clave incorrecta."},401);
