@@ -307,6 +307,7 @@ export async function onRequest(context) {
       }
       const account = await env.DB.prepare("SELECT scope,email,password_hash,salt,must_change FROM admin_accounts WHERE scope=?").bind(scope).first();
       const bootstrapLabel = scope === "marketing" ? "clave provisional de Marketing IA" : "clave provisional del sitio";
+      let mustChange = false;
       if (!account || Number(account.must_change) === 1) {
         if (!bootstrap) return json({error:"Falta configurar la " + bootstrapLabel + " en los secretos de Cloudflare Preview."},503);
         if (password !== bootstrap) return json({error:"Clave incorrecta."},401);
@@ -314,11 +315,9 @@ export async function onRequest(context) {
         if (!account) {
           await env.DB.prepare("INSERT OR IGNORE INTO admin_accounts(scope,email,password_hash,salt,must_change,created_at,updated_at) VALUES(?,?, '', '',1,?,?)").bind(scope,email,now,now).run();
         }
-        // Keep the already configured bootstrap password as the permanent password.
-        // Store only its salted PBKDF2 hash so the same password works across apps.
-        const salt = bytesHex(crypto.getRandomValues(new Uint8Array(16)));
-        const hash = await passwordHash(password,salt);
-        await env.DB.prepare("UPDATE admin_accounts SET password_hash=?,salt=?,must_change=0,updated_at=? WHERE scope=?").bind(hash,salt,now,scope).run();
+        // La clave provisional solo habilita el primer acceso.
+        // La contraseña definitiva se guarda en auth/change-password.
+        mustChange = true;
       } else {
         const valid = account.salt && account.password_hash && await passwordHash(password,account.salt) === account.password_hash;
         if (!valid) return json({error:"Clave incorrecta."},401);
