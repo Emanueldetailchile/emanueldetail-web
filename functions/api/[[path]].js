@@ -455,7 +455,7 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
       if (!raw || typeof raw !== "string") throw new Error("empty_model_response");
       let parsed;
       try {
-        const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```\\s*$/, "").trim();
+        const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```\s*$/, "").trim();
         parsed = JSON.parse(cleaned);
       } catch {
         parsed = { answer: raw.trim(), handoff: true, handoff_reason: "Respuesta requiere revisión humana" };
@@ -770,7 +770,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     const title = typeof b.title === "string" ? b.title.trim() : "";
     const description = typeof b.description === "string" ? b.description.trim() : "";
     const statuses = new Set(["planificado","en_preparacion","publicado","cancelado"]);
-    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(publishDate) || !title || title.length > 140 || !description || description.length > 1500 || (b.status && !statuses.has(b.status))) return json({error:"Revisa fecha, título, contenido y estado del calendario."},400);
+    if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id) || !/^\d{4}-\d{2}-\d{2}$/.test(publishDate) || !title || title.length > 140 || !description || description.length > 1500 || (b.status && !statuses.has(b.status))) return json({error:"Revisa fecha, título, contenido y estado del calendario."},400);
     const item = {id,publishDate,title,description,channels:typeof b.channels==="string"?b.channels.trim().slice(0,180):"",status:statuses.has(b.status)?b.status:"planificado",updatedAt:new Date().toISOString()};
     await env.DB.prepare("INSERT INTO marketing_calendar(id,payload,publish_date,updated_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,publish_date=excluded.publish_date,updated_at=excluded.updated_at").bind(id,JSON.stringify(item),publishDate,Date.now()).run();
     return json({ok:true,item});
