@@ -296,7 +296,7 @@ export async function onRequest(context) {
       // The secret must be configured separately in the Preview environment;
       // Production secrets are not implicitly available to Preview.
       const bootstrapName = scope === "marketing" ? "MARKETING_ADMIN_BOOTSTRAP" : "SITE_ADMIN_BOOTSTRAP";
-      const bootstrap = String(env[bootstrapName] || (scope === "marketing" ? env.ADMIN_TOKEN : "") || "");
+      const bootstrap = String(env[bootstrapName] || env.ADMIN_TOKEN || "");
       const now = Date.now(), ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
       const attempt = await env.DB.prepare("SELECT window_start,count FROM admin_login_attempts WHERE ip_hash=? AND scope=?").bind(ipHash,scope).first();
       if (attempt && Number(attempt.window_start) > now-15*60*1000 && Number(attempt.count) >= 8) return json({error:"Demasiados intentos. Espera 15 minutos e inténtalo nuevamente."},429);
@@ -409,9 +409,9 @@ export async function onRequest(context) {
       ok: true,
       db: !!env.DB,
       images: !!env.IMAGES,
-      adminConfigured: !!(env.SITE_ADMIN_BOOTSTRAP && env.MARKETING_ADMIN_BOOTSTRAP),
-      siteAdminConfigured: !!env.SITE_ADMIN_BOOTSTRAP,
-      marketingAdminConfigured: !!env.MARKETING_ADMIN_BOOTSTRAP,
+      adminConfigured: !!(env.SITE_ADMIN_BOOTSTRAP || env.ADMIN_TOKEN),
+      siteAdminConfigured: !!(env.SITE_ADMIN_BOOTSTRAP || env.ADMIN_TOKEN),
+      marketingAdminConfigured: !!(env.MARKETING_ADMIN_BOOTSTRAP || env.ADMIN_TOKEN),
       recoveryEmailConfigured: !!env.RESEND_API_KEY,
     });
   }
