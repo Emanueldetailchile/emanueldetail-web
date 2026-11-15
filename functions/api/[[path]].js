@@ -954,23 +954,27 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       return json({ error: "Selecciona una imagen" }, 400);
     }
 
-    if (!file.type.startsWith("image/")) {
-      return json({ error: "Solo se permiten imágenes" }, 400);
+    const allowedImageTypes = new Map([
+      ["image/jpeg", "jpg"],
+      ["image/png", "png"],
+      ["image/webp", "webp"],
+    ]);
+    const ext = allowedImageTypes.get(file.type);
+    if (!ext) {
+      return json({ error: "Formato no permitido. Usa JPG, PNG o WebP." }, 415);
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      return json({ error: "Máximo 8 MB por imagen" }, 413);
+    if (file.size < 1 || file.size > 8 * 1024 * 1024) {
+      return json({ error: "La imagen debe pesar entre 1 byte y 8 MB." }, 413);
     }
-
-    const ext =
-      (file.name.split(".").pop() || "jpg")
-        .replace(/[^a-z0-9]/gi, "")
-        .toLowerCase() || "jpg";
 
     const key = `uploads/${crypto.randomUUID()}.${ext}`;
 
     await env.IMAGES.put(key, file.stream(), {
-      httpMetadata: { contentType: file.type },
+      httpMetadata: {
+        contentType: file.type,
+        cacheControl: "public, max-age=31536000, immutable",
+      },
     });
 
     const base = String(env.R2_PUBLIC_URL || "").replace(/\/$/, "");
