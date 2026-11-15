@@ -41,11 +41,23 @@ button:disabled{opacity:.6;cursor:wait}
 <p class="small">Desde aquí puedes administrar productos y fotos de galería. No cambia el diseño ni el logo de la página.</p>
 
 <section class="card" id="login">
-<h2>Iniciar sesión</h2>
-<label>Clave de administrador</label>
-<input id="token" type="password" autocomplete="current-password" placeholder="Clave configurada en Cloudflare">
+<div id="login-pane">
+<h2>Acceso seguro · EMANUELDETAIL</h2>
+<label for="token">Contraseña o clave provisional</label>
+<input id="token" type="password" autocomplete="current-password" placeholder="Ingresa tu clave">
 <button id="loginbtn">Entrar</button>
-<p class="small">La clave se configura como ADMIN_TOKEN en Pages → Settings → Variables and Secrets.</p>
+<p id="auth-message" class="small" role="status" aria-live="polite">El acceso utiliza una sesión segura. No se guarda la contraseña en este dispositivo.</p>
+</div>
+<div id="change-pane" class="hidden">
+<h2>Crear contraseña definitiva</h2>
+<p class="small">Es tu primer ingreso. Define una contraseña nueva de al menos 12 caracteres. La clave provisional dejará de funcionar.</p>
+<label for="new-password">Nueva contraseña</label>
+<input id="new-password" type="password" autocomplete="new-password">
+<label for="confirm-password">Repite la contraseña</label>
+<input id="confirm-password" type="password" autocomplete="new-password">
+<button id="change-password-btn">Guardar contraseña</button>
+<p id="change-message" class="small" role="status" aria-live="polite"></p>
+</div>
 </section>
 
 <div id="app" class="hidden">
@@ -102,38 +114,38 @@ button:disabled{opacity:.6;cursor:wait}
 </div>
 
 <script>
-let token = sessionStorage.getItem('ed_admin_token') || '';
 const $ = id => document.getElementById(id);
+let authenticated = false;
 
 function status(message) {
   $('status').textContent = message;
 }
 
-function headers() {
-  return { Authorization: 'Bearer ' + token };
+async function readResponse(response) {
+  let data;
+  try { data = await response.json(); }
+  catch { throw new Error('El servidor respondió con un formato inesperado (HTTP ' + response.status + ').'); }
+  if (!response.ok) throw new Error(data.error || 'Error HTTP ' + response.status);
+  return data;
 }
 
 async function api(path, opts = {}) {
   const response = await fetch('/api/' + path, {
     ...opts,
-    headers: {
-      ...headers(),
-      ...(opts.headers || {})
-    }
+    credentials: 'same-origin',
+    headers: { ...(opts.headers || {}) }
   });
+  return readResponse(response);
+}
 
-  let data;
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error('El servidor respondió con un formato inesperado (HTTP ' + response.status + ').');
-  }
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Error HTTP ' + response.status);
-  }
-
-  return data;
+async function authRequest(path, payload) {
+  const response = await fetch('/api/auth/' + path, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ...payload, scope: 'site' })
+  });
+  return readResponse(response);
 }
 
 function escapeHTML(value) {
@@ -222,40 +234,69 @@ $('site-images').addEventListener('click', async event => {
 });
 
 function show() {
-  $('login').classList.toggle('hidden', !!token);
-  $('app').classList.toggle('hidden', !token);
-  if (token) refresh();
+  $('login').classList.toggle('hidden', authenticated);
+  $('app').classList.toggle('hidden', !authenticated);
+  if (authenticated) refresh();
+}
+
+function showPasswordChange() {
+  $('login-pane').classList.add('hidden');
+  $('change-pane').classList.remove('hidden');
 }
 
 async function login() {
   const button = $('loginbtn');
   button.disabled = true;
   button.textContent = 'Ingresando...';
-
-  const enteredToken = $('token').value.trim();
-
+  $('auth-message').textContent = 'Verificando acceso...';
   try {
-    const response = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token: enteredToken })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'No se pudo iniciar sesión.');
+    const data = await authRequest('login', { password: $('token').value });
+    $('token').value = '';
+    if (data.mustChange) {
+      showPasswordChange();
+      $('change-message').textContent = 'Acceso inicial validado. Ahora crea tu contraseña definitiva.';
+    } else {
+      authenticated = true;
+      show();
     }
-
-    token = enteredToken;
-    sessionStorage.setItem('ed_admin_token', token);
-    show();
   } catch (error) {
-    alert(error.message);
+    $('auth-message').textContent = error.message;
   } finally {
     button.disabled = false;
     button.textContent = 'Entrar';
   }
+}
+
+async function changePassword() {
+  const button = $('change-password-btn');
+  const password = $('new-password').value;
+  const confirmation = $('confirm-password').value;
+  if (password.length < 12) { $('change-message').textContent = 'Usa al menos 12 caracteres.'; return; }
+  if (password !== confirmation) { $('change-message').textContent = 'Las contraseñas no coinciden.'; return; }
+  button.disabled = true;
+  $('change-message').textContent = 'Guardando contraseña...';
+  try {
+    await authRequest('change-password', { password });
+    $('new-password').value = '';
+    $('confirm-password').value = '';
+    authenticated = true;
+    show();
+  } catch (error) {
+    $('change-message').textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function restoreSession() {
+  try {
+    const response = await fetch('/api/auth/me?scope=site', { credentials: 'same-origin', cache: 'no-store' });
+    const data = await readResponse(response);
+    authenticated = !!data.loggedIn && !data.mustChange;
+  } catch {
+    authenticated = false;
+  }
+  show();
 }
 
 async function upload(file) {
@@ -438,14 +479,17 @@ $('addgallery').onclick = async () => {
   }
 };
 
-$('logout').onclick = () => {
-  sessionStorage.removeItem('ed_admin_token');
-  token = '';
+$('logout').onclick = async () => {
+  try { await authRequest('logout', {}); } catch {}
+  authenticated = false;
+  $('login-pane').classList.remove('hidden');
+  $('change-pane').classList.add('hidden');
   $('token').value = '';
   show();
 };
 
-show();
+$('change-password-btn').onclick = changePassword;
+restoreSession();
 </script>
 <script src="/admin-visitas.js" defer></script>
 </body>
