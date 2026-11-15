@@ -980,6 +980,66 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
   }
 
 
+  // Agente comercial supervisado: prepara seguimientos, nunca envía mensajes ni cambia reservas.
+  if (path === "marketing/agent/briefing" && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
+    if (!env.AI || !env.DB) return json({error:"El agente necesita Workers AI y D1 en Preview."},503);
+    const today = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+    const weekEnd = new Date(Date.now()+7*24*60*60*1000);
+    const week = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago",year:"numeric",month:"2-digit",day:"2-digit"}).format(weekEnd);
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_leads (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,contact TEXT NOT NULL DEFAULT '',source TEXT NOT NULL,service TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '',next_followup_at TEXT,status TEXT NOT NULL DEFAULT 'nuevo',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)").run();
+    try { await env.DB.prepare("ALTER TABLE marketing_leads ADD COLUMN next_followup_at TEXT").run(); } catch {}
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS service_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT NOT NULL,service TEXT NOT NULL,commune TEXT NOT NULL,booking_date TEXT NOT NULL,start_time TEXT NOT NULL,notes TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'pendiente',created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)").run();
+    const [leadRows,bookingRows] = await Promise.all([
+      env.DB.prepare("SELECT id,name,source,service,status,next_followup_at FROM marketing_leads WHERE status IN ('nuevo','contactado','cotizado','agendado') AND (next_followup_at IS NULL OR next_followup_at='' OR next_followup_at<=?) ORDER BY CASE WHEN next_followup_at IS NULL OR next_followup_at='' THEN 0 ELSE 1 END,next_followup_at ASC,updated_at DESC LIMIT 40").bind(today).all(),
+      env.DB.prepare("SELECT id,name,service,commune,booking_date,start_time,status FROM service_bookings WHERE booking_date>=? AND booking_date<=? AND status IN ('pendiente','confirmada','reprogramacion') ORDER BY booking_date ASC,start_time ASC LIMIT 40").bind(today,week).all()
+    ]);
+    const leads = leadRows.results || [], bookings = bookingRows.results || [];
+    if (!leads.length && !bookings.length) return json({ok:true,run:null,message:"No hay seguimientos vencidos ni reservas próximas que requieran revisión."});
+    const system = "Eres el agente comercial interno de EMANUELDETAIL, negocio de detailing automotriz de Santiago de Chile. Analiza únicamente los registros entregados y crea un plan de seguimiento concreto. No inventes datos, precios, disponibilidad ni hechos. Prioriza clientes con seguimiento vencido y reservas pendientes de confirmar. Para mensajes al cliente usa español chileno natural, breve y profesional. No incluyas datos de contacto ni información sensible. Devuelve exclusivamente JSON válido: {summary:string,tasks:[{type:'lead_followup'|'booking_review',leadId:number|null,bookingId:number|null,priority:'alta'|'media'|'baja',reason:string,action:string,draftMessage:string}]}. Máximo 15 tareas. Cada ID debe corresponder exactamente a un registro entregado. Nunca envíes mensajes, no modifiques CRM ni confirmes reservas.";
+    const prompt = "Fecha local: "+today+". Clientes potenciales con seguimiento pendiente: "+JSON.stringify(leads)+". Reservas de los próximos 7 días: "+JSON.stringify(bookings)+". Genera un plan priorizado.";
+    try {
+      const result = await env.AI.run("@cf/openai/gpt-oss-120b",{messages:[{role:"system",content:system},{role:"user",content:prompt}],max_tokens:1500});
+      let raw = typeof result === "string" ? result : (result?.response || result?.result || result?.output_text || "");
+      if (!raw && result?.choices?.[0]?.message?.content) raw = result.choices[0].message.content;
+      if (!raw || typeof raw !== "string") throw new Error("empty_model_response");
+      const cleaned = raw.replace(/^\uFEFF/,"").replace(/^\s*```(?:json)?/i,"").replace(/```\s*$/,"").trim();
+      let parsed;
+      try { parsed = JSON.parse(cleaned); }
+      catch { const first=cleaned.indexOf("{"),last=cleaned.lastIndexOf("}"); if(first<0||last<=first) throw new Error("invalid_json"); parsed=JSON.parse(cleaned.slice(first,last+1)); }
+      const leadIds = new Set(leads.map(x=>Number(x.id))), bookingIds = new Set(bookings.map(x=>Number(x.id)));
+      const tasks = (Array.isArray(parsed.tasks)?parsed.tasks:[]).slice(0,15).map(t=>{
+        const type=t?.type==="booking_review"?"booking_review":"lead_followup";
+        const leadId=Number.isInteger(Number(t?.leadId)) && leadIds.has(Number(t.leadId)) ? Number(t.leadId) : null;
+        const bookingId=Number.isInteger(Number(t?.bookingId)) && bookingIds.has(Number(t.bookingId)) ? Number(t.bookingId) : null;
+        if ((type==="lead_followup" && !leadId) || (type==="booking_review" && !bookingId)) return null;
+        return {type,leadId,bookingId,priority:["alta","media","baja"].includes(t.priority)?t.priority:"media",reason:String(t.reason||"").slice(0,300),action:String(t.action||"").slice(0,300),draftMessage:String(t.draftMessage||"").slice(0,1000)};
+      }).filter(Boolean);
+      const run={id:randomToken().slice(0,24),date:today,summary:String(parsed.summary||"Plan de seguimiento generado.").slice(0,500),tasks,status:"pendiente_revision",createdAt:new Date().toISOString()};
+      await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_agent_runs (id TEXT PRIMARY KEY,run_date TEXT NOT NULL,status TEXT NOT NULL,result_json TEXT NOT NULL,created_at INTEGER NOT NULL,approved_at INTEGER)").run();
+      await env.DB.prepare("INSERT INTO marketing_agent_runs(id,run_date,status,result_json,created_at,approved_at) VALUES(?,?,?,?,?,NULL)").bind(run.id,today,run.status,JSON.stringify(run),Date.now()).run();
+      return json({ok:true,run});
+    } catch {
+      return json({error:"No se pudo generar el plan. No se modificó ningún cliente ni reserva."},503);
+    }
+  }
+  if (path === "marketing/agent/runs" && req.method === "GET") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_agent_runs (id TEXT PRIMARY KEY,run_date TEXT NOT NULL,status TEXT NOT NULL,result_json TEXT NOT NULL,created_at INTEGER NOT NULL,approved_at INTEGER)").run();
+    const {results=[]}=await env.DB.prepare("SELECT result_json FROM marketing_agent_runs ORDER BY created_at DESC LIMIT 10").all();
+    return json(results.map(x=>{try{return JSON.parse(x.result_json)}catch{return null}}).filter(Boolean));
+  }
+  if (path.startsWith("marketing/agent/runs/") && req.method === "POST") {
+    if (!(await authorized(req, env, "marketing"))) return json({error:"Debes iniciar sesión en Marketing IA."},401);
+    const parts=path.split("/");
+    const id=parts[3]||"";
+    if (parts[4]!=="approve" || !/^[a-zA-Z0-9_-]{12,40}$/.test(id)) return json({error:"Acción o identificador no válido."},400);
+    const now=Date.now();
+    const result=await env.DB.prepare("UPDATE marketing_agent_runs SET status='aprobado_por_usuario',approved_at=? WHERE id=? AND status='pendiente_revision'").bind(now,id).run();
+    if (!result.meta?.changes) return json({error:"El plan no existe o ya fue revisado."},404);
+    return json({ok:true,status:"aprobado_por_usuario",message:"Plan marcado como revisado. No se enviaron mensajes ni se modificaron reservas."});
+  }
+
   if (path === "leads" && req.method === "GET") {
     if (!(await authorized(req, env, "marketing"))) return json({ error: "Debes iniciar sesión en Marketing IA." }, 401);
     await env.DB.prepare(`CREATE TABLE IF NOT EXISTS marketing_leads (
