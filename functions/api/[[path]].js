@@ -696,7 +696,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       return 0;
     };
     const duration = requestedDuration(service, notes);
-    if (!name || !phone || !duration || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, fecha y hora válida." }, 400);
+    if (!name || !phone || phone.replace(/\D/g, "").length < 8 || phone.replace(/\D/g, "").length > 15 || !duration || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start)) return json({ error: "Completa nombre, teléfono, servicio, fecha y hora válida." }, 400);
     const dateObj = new Date(date + "T12:00:00Z");
     if (Number.isNaN(dateObj.getTime()) || dateObj.toISOString().slice(0,10) !== date) return json({error:"Fecha no válida."},400);
     const weekday = dateObj.getUTCDay();
