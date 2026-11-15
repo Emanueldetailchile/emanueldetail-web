@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090909"><meta name="description" content="Centro de marketing y aprobación de publicaciones de EmanuelDetail">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="ED Marketing"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="apple-touch-icon" href="/assets/logo-emanueldetail.png">
+<link rel="manifest" href="/marketing/manifest.webmanifest">
+<link rel="icon" href="/assets/logo-emanueldetail.png">
+<title>EmanuelDetail Marketing IA</title>
+<style>
+:root{color-scheme:dark;--bg:#090909;--panel:#151515;--panel2:#1d1b17;--gold:#d8ad4d;--gold2:#f5d98b;--line:#49391b;--muted:#aaa69d;--green:#3dbb79;--red:#d66c6c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#211b0e 0,#090909 42%);color:#f5f2e9;font:15px/1.45 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}.shell{max-width:1240px;margin:auto;padding:18px}.top{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding:8px 0 18px}.logo{width:64px;height:64px;object-fit:contain;border-radius:50%;border:1px solid var(--gold);background:#050505}.brand{flex:1}.brand h1{font-size:clamp(19px,3vw,27px);margin:0;color:var(--gold2);letter-spacing:.06em}.brand p{margin:3px 0 0;color:var(--muted);font-size:13px}.pill{border:1px solid var(--line);border-radius:99px;padding:6px 10px;color:var(--gold2);font-size:12px}.install-btn{border:1px solid #b88d38;background:linear-gradient(135deg,#f2d27c,#c18d2c);color:#171106;border-radius:9px;padding:8px 11px;font-weight:750;font-size:12px;white-space:nowrap}.install-btn:disabled{opacity:.55}
+nav{display:flex;gap:8px;overflow:auto;padding:15px 0}nav button,.btn{border:1px solid var(--line);border-radius:10px;background:#18150e;color:#f5e5bd;padding:10px 14px;white-space:nowrap}nav button.active,.primary{background:linear-gradient(135deg,#f2d27c,#c18d2c);color:#171106;border-color:#e6c16c;font-weight:750}
+.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:16px}.panel{background:linear-gradient(145deg,#181818,#101010);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}.panel h2{color:var(--gold2);font-size:18px;margin:0 0 14px}.field{display:grid;gap:6px;margin:12px 0}.field label{font-size:13px;color:#ddd}.field input,.field select,.field textarea{width:100%;background:#090909;border:1px solid #514323;color:#fff;border-radius:9px;padding:11px}.field textarea{min-height:105px;resize:vertical}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.platforms{display:flex;flex-wrap:wrap;gap:8px}.check{display:flex;align-items:center;gap:7px;border:1px solid #3d3422;padding:8px 10px;border-radius:9px;color:#ddd;font-size:13px}.preview{background:#080808;border:1px dashed #655027;border-radius:12px;padding:14px;min-height:250px;white-space:pre-wrap}.preview img{max-width:100%;max-height:260px;display:block;object-fit:contain;margin:0 auto 12px;border-radius:8px}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.btn:disabled{opacity:.45;cursor:not-allowed}.hint{font-size:12px;color:var(--muted)}.status{font-size:13px;color:var(--green);min-height:20px}.queue{display:grid;gap:10px}.post{border:1px solid #40351f;border-radius:12px;padding:12px;background:#0d0d0d}.posthead{display:flex;justify-content:space-between;gap:8px;align-items:center}.tag{font-size:11px;border:1px solid var(--line);padding:4px 7px;border-radius:99px;color:var(--gold2)}.post p{font-size:13px;color:#ddd;white-space:pre-wrap;max-height:100px;overflow:hidden}.danger{color:#f2a2a2;border-color:#633737}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.stat{background:#111;border:1px solid var(--line);border-radius:12px;padding:12px}.stat b{display:block;font-size:24px;color:var(--gold2)}.stat span{font-size:12px;color:var(--muted)}.hidden{display:none!important}.notice{padding:11px 13px;border-left:3px solid var(--gold);background:#211b0e;color:#e9d9b2;border-radius:7px;font-size:12px;margin:12px 0}.crm-lead{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr;gap:10px;align-items:center;border:1px solid #40351f;border-radius:10px;padding:12px;background:#0d0d0d}.crm-lead strong{display:block;font-size:13px}.crm-lead small{display:block;color:var(--muted);font-size:11px}.crm-lead select{width:100%;background:#090909;color:#fff;border:1px solid #514323;border-radius:8px;padding:8px}.crm-lead-meta{font-size:11px;color:var(--muted)}.crm-lead.overdue{border-color:#8a3939;background:#1b1010}.crm-followup-state{font-size:11px;font-weight:700;color:var(--gold2)}.crm-followup-state.overdue{color:#ff9696}.crm-followup-state.today{color:#f0c26b}@media(max-width:600px){.crm-lead{grid-template-columns:1fr 1fr}}
+@media(max-width:850px){.layout{grid-template-columns:1fr}}@media(max-width:520px){.shell{padding:12px}.top{align-items:flex-start}.logo{width:52px;height:52px}.pill{display:none}.two{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:9px}.stat b{font-size:20px}}
+.auth-gate{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at top,#30240f,#070707 65%)}.auth-card{width:min(440px,100%);padding:24px;border:1px solid var(--gold);border-radius:18px;background:#111;box-shadow:0 24px 80px #000a}.auth-card h2{color:var(--gold2);margin:0 0 8px}.auth-card p{color:var(--muted);font-size:13px}.auth-card input{width:100%;background:#090909;border:1px solid #514323;color:#fff;border-radius:9px;padding:12px;margin:7px 0 13px}.auth-card button{width:100%;margin:6px 0}.auth-link{background:none;border:0;color:var(--gold2);text-decoration:underline;padding:9px}</style></head>
+<body><div id="authGate" class="auth-gate"><div class="auth-card"><div id="authLoginPane"><h2>Acceso privado · EMANUELDETAIL</h2><p>Ingresa tu clave de acceso para administrar Marketing IA.</p><label for="authPassword">Contraseña</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Tu contraseña"><button class="btn primary" id="authLoginButton" type="button">Ingresar</button><p id="authMessage" role="status"></p></div><div id="authChangePane" class="hidden"><h2>Configura tu contraseña definitiva</h2><p>Este paso se realiza una sola vez. Usa al menos 12 caracteres. La clave provisional dejará de funcionar.</p><label for="authNewPassword">Nueva contraseña</label><input id="authNewPassword" type="password" autocomplete="new-password"><label for="authConfirmPassword">Repite la contraseña</label><input id="authConfirmPassword" type="password" autocomplete="new-password"><button class="btn primary" id="authChangeButton" type="button">Guardar contraseña definitiva</button><p id="authChangeMessage" role="status"></p></div></div></div><div class="shell hidden" id="adminShell">
+<header class="top"><img class="logo" src="/assets/logo-emanueldetail.png" alt="Logo EmanuelDetail"><div class="brand"><h1>EMANUELDETAIL · MARKETING IA</h1><p>Centro de contenido, aprobación y estrategia orgánica</p></div><button id="installApp" class="install-btn" type="button">Instalar app</button><button id="globalLogout" class="btn" type="button">Cerrar sesión</button><span class="pill">VERSIÓN MVP 0.2</span></header>
+<nav><button class="active" data-tab="crear">Crear publicación</button><button data-tab="cola">Cola de aprobación</button><button data-tab="plan">Plan orgánico</button><button data-tab="agenda">Agenda</button><button data-tab="respuestas">Respuestas</button><button data-tab="crm">CRM / Clientes</button><button data-tab="agente">Agente comercial</button><button data-tab="promociones">Promociones</button><button data-tab="datos">Datos y respaldo</button></nav>
+<section id="tab-crear">
+<div class="stats"><div class="stat"><b id="countDraft">0</b><span>Borradores</span></div><div class="stat"><b id="countApproved">0</b><span>Aprobados</span></div><div class="stat"><b id="countPublished">0</b><span>Publicados</span></div></div>
+<div class="layout"><section class="panel">
+<section class="panel"><h2>Acceso protegido</h2><p class="hint">La sesión privada ya está verificada. Las herramientas de IA usan la autenticación segura de este panel.</p><span class="hint" id="aiStatus">Workers AI listo para verificar.</span></section>
+<section class="panel">
+<h2>1. Material y objetivo</h2>
+<div class="field"><label for="photo">Sube una foto o imagen del trabajo (se conserva en este dispositivo)</label><input id="photo" type="file" accept="image/*"></div>
+<div class="two"><div class="field"><label for="service">Servicio</label><select id="service"><option value="Pack de limpieza de tapiz">Pack de limpieza de tapiz · $30.000 lanzamiento</option><option value="Full interior">Full interior · $50.000</option><option value="Limpieza superficial de motor a vapor">Limpieza superficial de motor a vapor · $20.000</option></select></div>
+<div class="field"><label for="commune">Comuna objetivo</label><select id="commune"><option>San Ramón</option><option>La Cisterna</option><option>El Bosque</option><option>San Miguel</option><option>La Granja</option><option>La Pintana</option><option>La Florida</option><option>Puente Alto</option><option>San Bernardo</option><option>Región Metropolitana</option></select></div></div>
+<div class="two"><div class="field"><label for="offer">Precio o promoción (opcional)</label><input id="offer" placeholder="Ej. Promoción de lanzamiento $30.000"></div><div class="field"><label for="objective">Objetivo</label><select id="objective"><option value="Conseguir reservas">Conseguir reservas</option><option value="Mostrar resultados reales">Mostrar resultados reales</option><option value="Educar y generar confianza">Educar y generar confianza</option><option value="Promocionar un servicio">Promocionar un servicio</option></select></div></div>
+<div class="field"><label for="notes">Idea o detalles del trabajo</label><textarea id="notes" placeholder="Ej. Asientos con manchas, limpieza profunda y resultado final. Indica solo datos reales."></textarea></div>
+<div class="field"><label>Canales para preparar</label><div class="platforms"><label class="check"><input type="checkbox" name="channel" value="Página de Facebook" checked> Página Facebook</label><label class="check"><input type="checkbox" name="channel" value="Grupos de Facebook" checked> Grupos Facebook</label><label class="check"><input type="checkbox" name="channel" value="Marketplace 1"> Marketplace perfil 1</label><label class="check"><input type="checkbox" name="channel" value="Marketplace 2"> Marketplace perfil 2</label><label class="check"><input type="checkbox" name="channel" value="Instagram"> Instagram</label></div></div>
+<div class="actions"><button class="btn" id="generate">Generar borrador básico</button><button class="btn primary" id="generateAI">Generar con IA</button></div><p class="hint">Genera un primer borrador editable con reglas comerciales. No inventa reseñas, resultados ni disponibilidad.</p>
+</section>
+<section class="panel"><h2>2. Vista previa y aprobación</h2><div class="preview" id="preview">Tu publicación aparecerá aquí. Sube una foto, selecciona el servicio y genera una propuesta.</div><div class="field"><label for="caption">Texto editable</label><textarea id="caption" placeholder="El texto generado aparecerá aquí…"></textarea></div><div class="actions"><button class="btn" id="copy">Copiar texto</button><button class="btn primary" id="save">Guardar borrador</button><button class="btn primary" id="approve">Aprobar contenido</button></div><p class="status" id="message"></p><div class="notice">Aprobar significa que tú autorizas el contenido. En esta versión todavía no se publica en Meta: primero se prepara y guarda para revisión.</div></section></div>
+</section>
+<section id="tab-cola" class="hidden"><div class="panel"><h2>Cola de contenido</h2><p class="hint">Revisa, copia, aprueba o elimina cada propuesta. La publicación externa requiere conectar y autorizar las cuentas oficiales.</p><div id="queue" class="queue"></div></div></section>
+<section id="tab-plan" class="hidden"><div class="panel"><h2>Calendario editorial · sincronizado</h2><p class="hint">Las ideas, fechas, canales y estados se guardan en la base central para que aparezcan en tus otros dispositivos.</p><form id="editorialForm"><input id="editorialId" type="hidden"><div class="two"><div class="field"><label for="editorialDate">Fecha de publicación</label><input id="editorialDate" type="date" required></div><div class="field"><label for="editorialTitle">Título / tema</label><input id="editorialTitle" maxlength="140" required placeholder="Ej. Antes y después de limpieza interior"></div></div><div class="field"><label for="editorialDescription">Contenido / objetivo</label><textarea id="editorialDescription" maxlength="1500" required placeholder="Describe qué se publicará y qué se busca conseguir."></textarea></div><div class="two"><div class="field"><label for="editorialChannels">Canales</label><input id="editorialChannels" maxlength="180" placeholder="Facebook, Instagram, grupos autorizados"></div><div class="field"><label for="editorialStatus">Estado</label><select id="editorialStatus"><option value="planificado">Planificado</option><option value="en_preparacion">En preparación</option><option value="publicado">Publicado</option><option value="cancelado">Cancelado</option></select></div></div><div class="actions"><button class="btn primary" id="editorialSave" type="submit">Guardar en calendario</button><button class="btn" id="editorialCancel" type="button">Limpiar</button><button class="btn" id="editorialRefresh" type="button">Actualizar desde la nube</button></div><p id="editorialMessage" class="status" role="status"></p></form><div class="notice">Prioridad: grupos locales y página de Facebook. Publica en grupos solo cuando sus normas permitan ofertas de servicios; alterna contenido útil, trabajos reales y promociones. No automatizamos spam ni publicaciones masivas.</div><div class="queue" id="calendar"></div></div></section>
+<section id="tab-agenda" class="hidden"><div class="panel"><h2>Agenda de EmanuelDetail · San Ramón</h2><p class="hint">Horario: lunes a jueves 10:00–18:30 · viernes 10:00–16:00. Objetivo inicial: 1 servicio diario; máximo operativo provisional: 2, solo si los tiempos lo permiten.</p><div class="notice">La agenda se sincroniza con la base central. Las solicitudes públicas y los registros internos aparecen aquí como pendientes hasta que el equipo revise y confirme.</div><form id="bookingForm"><div class="two"><div class="field"><label for="bookingName">Nombre del cliente *</label><input id="bookingName" maxlength="120" required></div><div class="field"><label for="bookingPhone">Teléfono</label><input id="bookingPhone" maxlength="40" placeholder="+56 9..."></div><div class="field"><label for="bookingDate">Fecha *</label><input id="bookingDate" type="date" required></div><div class="field"><label for="bookingStart">Hora de inicio *</label><input id="bookingStart" type="time" required></div><div class="field"><label for="bookingService">Servicio *</label><select id="bookingService"><option value="pack">Pack de limpieza de tapiz · $30.000</option><option value="full">Full interior · $50.000</option><option value="motor">Motor a vapor · $20.000</option></select></div><div class="field"><label for="bookingVehicle">Tamaño del vehículo</label><select id="bookingVehicle"><option value="small">Pequeño / sedán</option><option value="large">Grande / SUV / camioneta</option></select></div><div class="field"><label for="bookingCondition">Estado del vehículo</label><select id="bookingCondition"><option value="normal">Suciedad normal</option><option value="heavy">Muy sucio / manchas difíciles</option></select></div></div><p id="bookingEstimate" class="notice">Duración estimada: 1,5 horas · Precio: $30.000</p><button class="btn primary" type="submit">Registrar cita acordada</button><p id="bookingMsg" class="status"></p></form><div class="actions" style="justify-content:space-between"><h2 style="margin:12px 0">Citas registradas</h2><button class="btn" id="bookingRefresh" type="button">Actualizar agenda</button></div><div id="bookingList" class="queue"></div></div></section>
+<section id="tab-respuestas" class="hidden"><div class="panel"><h2>Marketing IA · Bandeja asistida</h2>
+<p class="hint">Modo mixto: la IA prepara respuestas para preguntas frecuentes y deriva casos complejos. Alcance configurado: ambos perfiles de Marketplace, Facebook, Instagram y WhatsApp. La respuesta se revisa antes de copiarla; aún no se envía directamente a las plataformas.</p>
+<div class="notice"><strong>Modo:</strong> Mixto · <strong>Alcance:</strong> Both (todos los canales configurados). Marketplace 1 y 2 se mantienen identificados por separado.</div>
+<div class="two"><div class="field"><label for="aiReplyChannel">Canal de origen</label><select id="aiReplyChannel"><option value="Marketplace 1">Marketplace perfil 1</option><option value="Marketplace 2">Marketplace perfil 2</option><option value="Facebook">Facebook</option><option value="Instagram">Instagram</option><option value="WhatsApp">WhatsApp Business</option></select></div><div class="field"><label for="aiReplyCustomer">Nombre del cliente (opcional)</label><input id="aiReplyCustomer" maxlength="80" placeholder="Nombre"></div></div>
+<div class="field"><label for="aiIncomingMessage">Mensaje recibido del cliente</label><textarea id="aiIncomingMessage" rows="5" maxlength="1200" placeholder="Pega aquí el mensaje del cliente..."></textarea></div>
+<div class="actions"><button class="btn primary" id="generateAIReply" type="button">Generar respuesta con IA</button></div>
+<div id="aiReplyStatus" class="status" role="status"></div>
+<div id="aiHandoffNotice" class="notice hidden"></div>
+<div class="field"><label for="aiReplyOutput">Respuesta sugerida (editable)</label><textarea id="aiReplyOutput" rows="7" placeholder="La respuesta aparecerá aquí..."></textarea></div>
+<div class="actions"><button class="btn" id="copyAIReply" type="button">Copiar respuesta</button></div>
+<hr style="border-color:#49391b;margin:20px 0">
+<h2>Respuestas rápidas por plantilla</h2><p class="hint">Prepara respuestas para copiar en WhatsApp, Messenger, Instagram o Marketplace. No envía mensajes automáticamente: la solicitud de autorización de Meta está en revisión; hasta que se apruebe y configure la conexión oficial, las respuestas se envían manualmente.</p><div class="two"><div class="field"><label for="replyIntent">¿Qué pregunta el cliente?</label><select id="replyIntent"><option value="price">Precio y qué incluye</option><option value="availability">Agenda y horarios</option><option value="location">Ubicación y atención</option><option value="full">Detalles del Full interior</option><option value="motor">Limpieza de motor</option><option value="photos">Evaluar estado del vehículo</option></select></div><div class="field"><label for="replyService">Servicio consultado</label><select id="replyService"><option value="pack">Pack de limpieza de tapiz · $30.000</option><option value="full">Full interior · $50.000</option><option value="motor">Motor a vapor · $20.000</option></select></div></div><div class="field"><label for="replyName">Nombre del cliente (opcional)</label><input id="replyName" maxlength="80" placeholder="Ej. Camila"></div><div class="field"><label for="replyText">Respuesta lista para revisar y enviar</label><textarea id="replyText" rows="9" placeholder="Selecciona una consulta para preparar la respuesta."></textarea></div><div class="actions"><button class="btn primary" id="makeReply" type="button">Preparar respuesta</button><button class="btn" id="copyReply" type="button">Copiar respuesta</button></div><p id="replyMsg" class="status"></p><div class="notice">Regla comercial: nunca prometemos un horario hasta revisar la agenda. La atención es en nuestro espacio de trabajo en San Ramón; no ofrecemos domicilio por ahora.</div></div></section>
+<section id="tab-crm" class="hidden">
+<div class="panel">
+<h2>CRM · Registro de consultas</h2>
+<p class="hint">Registra clientes que llegan desde WhatsApp, Facebook, Instagram, web y tus dos perfiles de Marketplace. Los mensajes de Marketplace se anotan manualmente.</p>
+<div id="crmLogin" class="notice">Sesión privada de Marketing IA activa. Los datos del CRM están protegidos por este acceso.</div>
+<div id="crmWorkspace" class="hidden">
+<div class="actions" style="justify-content:space-between;align-items:center"><h2 style="margin:8px 0">Nuevo cliente potencial</h2><button class="btn" id="crmLogout" type="button">Cerrar sesión</button></div>
+<form id="crmLeadForm">
+<div class="two">
+<div class="field"><label for="crmName">Nombre del cliente *</label><input id="crmName" maxlength="120" required></div>
+<div class="field"><label for="crmContact">Teléfono o contacto</label><input id="crmContact" maxlength="120" placeholder="+56 9..."></div>
+<div class="field"><label for="crmSource">Canal de origen *</label><select id="crmSource" required><option value="" selected disabled>Selecciona el canal de origen</option><option value="marketplace_1">Marketplace 1</option><option value="marketplace_2">Marketplace 2</option><option value="whatsapp">WhatsApp Business</option><option value="facebook">Facebook Empresa</option><option value="instagram">Instagram Empresa</option><option value="web">Página web</option><option value="otro">Otro</option></select></div>
+<div class="field"><label for="crmService">Servicio solicitado</label><input id="crmService" maxlength="160" placeholder="Ej. Limpieza interior completa"></div>
+</div>
+<div class="field"><label for="crmNotes">Notas del cliente</label><textarea id="crmNotes" maxlength="1200" placeholder="Comuna, vehículo, fecha tentativa, presupuesto..."></textarea></div><div class="field"><label for="crmFollowup">Fecha del próximo seguimiento</label><input id="crmFollowup" type="date"><small class="hint">Déjala vacía si no hay seguimiento pendiente.</small></div>
+<button class="btn primary" type="submit">Guardar cliente</button><span id="crmFormMsg" class="status"></span>
+</form>
+<div class="actions" style="justify-content:space-between"><h2 style="margin:12px 0">Consultas registradas</h2><button class="btn" id="crmRefresh">Actualizar</button></div>
+<div id="crmLeadList" class="queue"><p class="hint">Inicia sesión para ver los registros.</p></div>
+</div></div></section>
+<section id="tab-promociones" class="hidden"><div class="panel"><h2>Promociones EmanuelDetail</h2><p class="hint">Crea ofertas para la web y la futura app de clientes. Solo las promociones activas y dentro de vigencia se mostrarán públicamente.</p><div class="two"><div class="field"><label for="promoTitle">Nombre de la promoción *</label><input id="promoTitle" maxlength="120" placeholder="Ej. Lanzamiento limpieza interior"></div><div class="field"><label for="promoPrice">Precio promocional (CLP)</label><input id="promoPrice" type="number" min="0" step="1" placeholder="35000"></div><div class="field"><label for="promoStart">Desde</label><input id="promoStart" type="date"></div><div class="field"><label for="promoEnd">Hasta</label><input id="promoEnd" type="date"></div><div class="field"><label for="promoUses">Cupos disponibles</label><input id="promoUses" type="number" min="1" step="1" placeholder="Sin límite"></div><div class="field"><label for="promoCode">Código promocional</label><input id="promoCode" maxlength="40" placeholder="EMANUEL10"></div><div class="field"><label for="promoAudience">Dónde se muestra</label><select id="promoAudience"><option value="app">Solo aplicación (beneficio exclusivo)</option><option value="all">Web y aplicación</option><option value="web">Solo página web</option></select></div></div><div class="field"><label for="promoDescription">Descripción y condiciones</label><textarea id="promoDescription" maxlength="700" placeholder="Servicio incluido, exclusiones y condiciones..."></textarea></div><div class="actions"><button class="btn primary" id="promoSave">Guardar como borrador</button><button class="btn" id="promoActivate">Guardar y activar</button></div><p class="status" id="promoMessage"></p><h3>Promociones creadas</h3><div id="promoList" class="queue"></div></div></section>
+<section id="tab-agente" class="hidden">
+<div class="panel">
+<h2>Agente comercial · Seguimiento supervisado</h2>
+<p class="hint">Analiza clientes potenciales con seguimiento pendiente y reservas próximas. Prepara prioridades y borradores de respuesta para revisión humana.</p>
+<div class="notice">Control humano activo: este agente no envía mensajes, no publica contenido, no confirma horas y no modifica clientes ni reservas.</div>
+<div class="actions"><button class="btn primary" id="agentGenerate" type="button">Generar plan de seguimiento</button><button class="btn" id="agentRefresh" type="button">Ver último plan</button></div>
+<p id="agentStatus" class="status" role="status" aria-live="polite"></p>
+<div id="agentResults" class="queue"><p class="hint">Todavía no hay un plan generado.</p></div>
+</div>
+</section>
+<section id="tab-datos" class="hidden"><div class="panel"><h2>Respaldo de contenido</h2><p>Los borradores y aprobaciones se sincronizan con la base central de Preview cuando inicias sesión y hay conexión. El archivo JSON sirve como respaldo exportable; importar un respaldo no publica contenido.</p><div class="actions"><button class="btn primary" id="export">Exportar respaldo JSON</button><label class="btn" for="importFile">Importar respaldo JSON</label><input class="hidden" id="importFile" type="file" accept="application/json"></div><p class="hint">La cola de publicaciones, CRM, agenda y calendario editorial usan almacenamiento central de Preview. La sincronización requiere iniciar sesión y una conexión activa. Mantén un respaldo JSON periódico de tus borradores.</p></div></section>
+<footer class="hint" style="padding:18px 4px">EmanuelDetail · Marketing IA · Tu logo original se mantiene sin modificaciones.</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);let authReady=false,authScope="marketing";const KEY='ed_marketing_posts_v1';let posts=load();let currentPhoto='';let currentDraft=null;const BOOKING_KEY='ed_marketing_bookings_v1';let bookings=loadBookings();
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return []}}
+function loadBookings(){try{return JSON.parse(localStorage.getItem(BOOKING_KEY)||'[]')}catch{return []}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(posts));renderStats();renderQueue();return true}catch(e){$('message').textContent='No se pudo guardar: el almacenamiento del navegador está lleno. Exporta un respaldo y elimina imágenes antiguas.';return false}}
+
+const crmSources={whatsapp:'WhatsApp Business',facebook:'Facebook Empresa',instagram:'Instagram Empresa',marketplace_1:'Marketplace 1',marketplace_2:'Marketplace 2',web:'Página web',otro:'Otro'};
+const crmStatuses={nuevo:'Nuevo',contactado:'Contactado',cotizado:'Cotizado',agendado:'Agendado',ganado:'Ganado',perdido:'Perdido'};
+async function crmApi(path,options={}){const headers={...(options.headers||{})};if(options.body)headers['Content-Type']='application/json';const r=await fetch('/api/'+path,{...options,credentials:'same-origin',headers});const d=await r.json().catch(()=>({error:'Respuesta inválida'}));if(r.status===401){authReady=false;logoutAdmin();throw new Error('Sesión no autorizada. Ingresa nuevamente.')}if(!r.ok)throw new Error(d.error||'Error de servidor');return d}
+const R2_MEDIA_PREFIXES=['https://pub-b985f908dab04541837258217cdf0a0e.r2.dev/marketing/','https://pub-5585f4aa0da6468fb7f45044499da8df.r2.dev/marketing/'];
+async function uploadMarketingPhoto(photo){
+ if(typeof photo!=='string'||!photo)return '';
+ if(R2_MEDIA_PREFIXES.some(prefix=>photo.startsWith(prefix)))return photo;
+ if(!/^data:image\/(jpeg|png|webp);base64,/.test(photo))return '';
+ const blob=await (await fetch(photo)).blob();
+ const form=new FormData();form.append('file',blob,'marketing-image.'+(blob.type==='image/png'?'png':blob.type==='image/webp'?'webp':'jpg'));
+ const response=await fetch('/api/marketing/upload',{method:'POST',credentials:'same-origin',body:form});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok||!data.publicUrl)throw new Error(data.error||'No se pudo subir la imagen al almacenamiento seguro.');
+ return data.publicUrl;
+}
+async function syncMarketingPosts(){
+ const remote=await crmApi('marketing/posts');
+ const byId=new Map(remote.map(p=>[p.id,p]));
+ for(const local of posts){
+  if(!local||typeof local.caption!=='string')continue;
+  const server=byId.get(local.id);
+  const localTime=Date.parse(local.updatedAt||local.createdAt||0)||0;
+  const serverTime=Date.parse(server?.updatedAt||server?.createdAt||0)||0;
+  if(!server||localTime>serverTime||(!server.photo&&!!local.photo)){
+   const photo=await uploadMarketingPhoto(local.photo);
+   const saved=await crmApi('marketing/posts',{method:'POST',body:JSON.stringify({...local,photo})});
+   if(saved.post)byId.set(saved.post.id,saved.post);
+  }
+ }
+ posts=[...byId.values()].map(server=>{const local=posts.find(item=>item.id===server.id);return {...server,photo:local?.photo?.startsWith('data:image/')?server.photo||local.photo:server.photo||local?.photo||''}}).sort((a,b)=>(Date.parse(b.updatedAt||b.createdAt)||0)-(Date.parse(a.updatedAt||a.createdAt)||0));
+ try{localStorage.setItem(KEY,JSON.stringify(posts))}catch{}
+ renderStats();renderQueue();
+}
+async function saveMarketingPost(post){
+ const photo=await uploadMarketingPhoto(post.photo);
+ const result=await crmApi('marketing/posts',{method:'POST',body:JSON.stringify({...post,photo})});
+ return result.post;
+}
+function crmSync(){$('crmWorkspace').classList.toggle('hidden',!authReady);if(authReady)crmLoadLeads()}
+
+async function crmLoadLeads(){const box=$('crmLeadList');box.textContent='Cargando...';try{const leads=await crmApi('leads');box.replaceChildren();if(!leads.length){const p=document.createElement('p');p.className='hint';p.textContent='Aún no hay consultas registradas.';box.append(p);return}for(const lead of leads){const row=document.createElement('article');row.className='crm-lead';const name=document.createElement('div');const strong=document.createElement('strong');strong.textContent=lead.name;const contact=document.createElement('small');contact.textContent=lead.contact||'Sin contacto';name.append(strong,contact);const source=document.createElement('div');const src=document.createElement('strong');src.textContent=crmSources[lead.source]||lead.source;const service=document.createElement('small');service.textContent=lead.service||'Servicio por definir';source.append(src,service);const notes=document.createElement('div');const note=document.createElement('small');note.textContent=lead.notes||'Sin notas';const date=document.createElement('small');date.textContent='Ingreso: '+new Date(lead.created_at).toLocaleDateString('es-CL');const follow=document.createElement('small');const followDateValue=lead.next_followup_at||'';const now=new Date();const todayKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');const isOverdue=!!(followDateValue&&followDateValue<todayKey);const isToday=!!(followDateValue&&followDateValue===todayKey);follow.textContent=followDateValue?(isOverdue?'SEGUIMIENTO VENCIDO · ':isToday?'SEGUIMIENTO HOY · ':'Seguimiento: ')+new Date(followDateValue+'T12:00:00').toLocaleDateString('es-CL'):'Sin seguimiento programado';follow.className='crm-followup-state'+(isOverdue?' overdue':isToday?' today':'');if(isOverdue)row.classList.add('overdue');notes.append(note,date,follow);const status=document.createElement('select');status.setAttribute('aria-label','Estado de '+lead.name);Object.entries(crmStatuses).forEach(([value,label])=>{const op=document.createElement('option');op.value=value;op.textContent=label;op.selected=lead.status===value;status.append(op)});status.addEventListener('change',async()=>{const old=lead.status;status.disabled=true;try{await crmApi('leads/'+lead.id,{method:'PATCH',body:JSON.stringify({status:status.value})});lead.status=status.value}catch(e){status.value=old;alert(e.message)}finally{status.disabled=false}});const followDate=document.createElement('input');followDate.type='date';followDate.value=lead.next_followup_at||'';followDate.setAttribute('aria-label','Próximo seguimiento de '+lead.name);followDate.addEventListener('change',async()=>{followDate.disabled=true;try{await crmApi('leads/'+lead.id,{method:'PATCH',body:JSON.stringify({next_followup_at:followDate.value})});await crmLoadLeads()}catch(e){alert('No se pudo guardar el seguimiento: '+e.message)}finally{followDate.disabled=false}});row.append(name,source,notes,status,followDate);box.append(row)}}catch(e){box.textContent=e.message}}
+$('crmLeadForm').addEventListener('submit',async e=>{e.preventDefault();const msg=$('crmFormMsg');msg.textContent='Guardando...';const payload={name:$('crmName').value.trim(),contact:$('crmContact').value.trim(),source:$('crmSource').value,service:$('crmService').value.trim(),notes:$('crmNotes').value.trim(),next_followup_at:$('crmFollowup').value};try{await crmApi('leads',{method:'POST',body:JSON.stringify(payload)});$('crmLeadForm').reset();msg.textContent='Cliente guardado.';await crmLoadLeads()}catch(err){msg.textContent=err.message}});
+$('crmRefresh').addEventListener('click',crmLoadLeads);
+$('crmLogout').addEventListener('click',()=>logoutAdmin());
+
+
+let installPromptEvent=null;
+const installButton=$('installApp');
+function isStandalone(){return window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true}
+function updateInstallButton(){if(isStandalone()){installButton.textContent='App instalada';installButton.disabled=true;installButton.title='EmanuelDetail Marketing IA ya está instalada.'}else if(!installPromptEvent){installButton.textContent='Cómo instalar';installButton.disabled=false;installButton.title='Ver instrucciones para instalar desde Chrome en Android.'}}
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPromptEvent=event;installButton.textContent='Instalar app';installButton.disabled=false});
+window.addEventListener('appinstalled',()=>{installPromptEvent=null;updateInstallButton();alert('EmanuelDetail Marketing IA quedó instalada en este dispositivo.')});
+installButton.addEventListener('click',async()=>{
+ if(isStandalone()){updateInstallButton();return}
+ if(installPromptEvent){installPromptEvent.prompt();const choice=await installPromptEvent.userChoice;if(choice?.outcome==='accepted'){installPromptEvent=null;installButton.textContent='Instalación aceptada'}return}
+ alert('Para instalarla en Android: abre esta dirección en Google Chrome, toca el menú ⋮ y elige “Instalar aplicación” o “Añadir a pantalla principal”. Si no aparece, actualiza la página y vuelve a intentarlo.');
+});
+updateInstallButton();
+renderStats();renderQueue();const newId=()=>crypto.randomUUID?crypto.randomUUID():('ed-'+Date.now()+'-'+Math.random().toString(36).slice(2));
+function safePhoto(v){return typeof v==='string' && ((/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v)&&v.length<2200000)||R2_MEDIA_PREFIXES.some(prefix=>v.startsWith(prefix)))?v:''}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function channels(){return [...document.querySelectorAll('[name=channel]:checked')].map(x=>x.value)}
+function makeCaption(){const service=$('service').value,commune=$('commune').value,offer=$('offer').value.trim()||({'Pack de limpieza de tapiz':'Promoción de lanzamiento: $30.000','Full interior':'$50.000','Limpieza superficial de motor a vapor':'$20.000'}[service]||''),objective=$('objective').value,notes=$('notes').value.trim();let lead=objective==='Educar y generar confianza'?'Un espacio limpio también hace la diferencia.':objective==='Mostrar resultados reales'?'Cada detalle cuenta en el cuidado de tu vehículo.':objective==='Promocionar un servicio'?'Dale a tu vehículo el cuidado que merece.':'¿Tu vehículo necesita una limpieza interior?';let lines=[lead,'','En EMANUELDETAIL realizamos '+service.toLowerCase()+'.'];if(notes)lines.push('',notes);if(offer)lines.push('',offer);lines.push('','Atención con reserva previa en nuestro espacio de trabajo en San Ramón. Coordinamos los detalles y disponibilidad por mensaje.','', '¿Quieres cotizar? Escríbenos por Facebook Messenger.','', 'Atención en '+commune+' y comunas cercanas.','', '#EmanuelDetail #DetailingAutomotriz #LimpiezaAutomotriz #SantiagoChile');if(channels().includes('Grupos de Facebook'))lines.push('','Publicación para grupos: adapta el saludo y revisa las reglas del grupo antes de compartir.');return lines.join('\n')}
+$('photo').addEventListener('change',e=>{const f=e.target.files?.[0];if(!f)return;if(!f.type.startsWith('image/')){alert('Selecciona una imagen válida.');return}if(f.size>12*1024*1024){alert('La imagen supera 12 MB.');e.target.value='';return}const reader=new FileReader();reader.onload=()=>{const img=new Image();img.onload=()=>{const scale=Math.min(1,1400/Math.max(img.width,img.height));const canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);currentPhoto=canvas.toDataURL('image/jpeg',0.72);showPreview()};img.src=reader.result};reader.readAsDataURL(f)});
+function showPreview(){const text=$('caption').value||'La propuesta aparecerá aquí.';$('preview').replaceChildren();if(safePhoto(currentPhoto)){const im=document.createElement('img');im.alt='Foto del trabajo';im.src=safePhoto(currentPhoto);$('preview').append(im)}const div=document.createElement('div');div.textContent=text;$('preview').append(div)}
+
+$('generateAI').onclick=async()=>{if(!authReady){$("aiStatus").textContent="Inicia sesión para continuar.";return}const payload={service:$('service').value,commune:$('commune').value,offer:$('offer').value.trim(),objective:$('objective').value,notes:$('notes').value.trim(),channels:channels()};$('generateAI').disabled=true;$('aiStatus').textContent='La IA está redactando…';try{const r=await fetch('/api/marketing/ai-copy',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const d=await r.json();if(!r.ok)throw Error(d.error||'Error al generar');$('caption').value=d.caption;currentDraft={id:newId(),createdAt:new Date().toISOString(),service:payload.service,commune:payload.commune,channels:payload.channels,photo:currentPhoto,status:'borrador'};showPreview();$('message').textContent='Texto generado por IA. Revísalo y edítalo antes de guardar o aprobar.';$('aiStatus').textContent='IA conectada y lista.'}catch(e){$('aiStatus').textContent=e.message}finally{$('generateAI').disabled=false}};
+$('generate').onclick=()=>{const txt=makeCaption();$('caption').value=txt;currentDraft={id:newId(),createdAt:new Date().toISOString(),service:$('service').value,commune:$('commune').value,channels:channels(),caption:txt,photo:currentPhoto,status:'borrador'};showPreview();$('message').textContent='Propuesta generada. Revisa los datos antes de guardar.'};
+$('caption').addEventListener('input',showPreview);
+$('copy').onclick=async()=>{if(!$('caption').value.trim())return alert('Primero genera o escribe una publicación.');try{await navigator.clipboard.writeText($('caption').value);$('message').textContent='Texto copiado.'}catch{$('caption').select();document.execCommand('copy');$('message').textContent='Texto copiado.'}};
+$('save').onclick=async()=>{if(!$('caption').value.trim())return alert('No hay contenido para guardar.');const p=currentDraft||{id:newId(),createdAt:new Date().toISOString(),service:$('service').value,commune:$('commune').value,channels:channels(),photo:currentPhoto};p.caption=$('caption').value;p.status='borrador';p.updatedAt=new Date().toISOString();const i=posts.findIndex(x=>x.id===p.id);if(i>=0)posts[i]=p;else posts.unshift(p);currentDraft=p;persist();$('save').disabled=true;$('message').textContent='Guardando en la base central…';try{const saved=await saveMarketingPost(p);Object.assign(p,saved);persist();$('message').textContent='Borrador guardado y sincronizado en la nube.'}catch(e){$('message').textContent='Guardado local; no se pudo sincronizar: '+e.message}finally{$('save').disabled=false}};
+$('approve').onclick=async()=>{if(!$('caption').value.trim())return alert('No hay contenido para aprobar.');const p=currentDraft||{id:newId(),createdAt:new Date().toISOString(),service:$('service').value,commune:$('commune').value,channels:channels(),photo:currentPhoto};p.caption=$('caption').value;p.status='aprobado';p.approvedAt=new Date().toISOString();p.updatedAt=new Date().toISOString();const i=posts.findIndex(x=>x.id===p.id);if(i>=0)posts[i]=p;else posts.unshift(p);currentDraft=p;persist();$('approve').disabled=true;$('message').textContent='Registrando aprobación…';try{const saved=await saveMarketingPost(p);Object.assign(p,saved);persist();$('message').textContent='Contenido aprobado y sincronizado. Aún no se ha publicado en redes.'}catch(e){$('message').textContent='Aprobación guardada localmente, pero no sincronizada: '+e.message}finally{$('approve').disabled=false}};
+function renderStats(){$('countDraft').textContent=posts.filter(x=>x.status==='borrador').length;$('countApproved').textContent=posts.filter(x=>x.status==='aprobado').length;$('countPublished').textContent=posts.filter(x=>x.status==='publicado').length}
+function renderQueue(){const q=$('queue');q.replaceChildren();if(!posts.length){const p=document.createElement('p');p.className='hint';p.textContent='Todavía no hay publicaciones guardadas.';q.append(p);return}for(const post of posts){const card=document.createElement('article');card.className='post';const head=document.createElement('div');head.className='posthead';const title=document.createElement('b');title.textContent=post.service||'Publicación';const tag=document.createElement('span');tag.className='tag';tag.textContent=post.status;head.append(title,tag);card.append(head);const meta=document.createElement('div');meta.className='hint';meta.textContent=(Array.isArray(post.channels)?post.channels.join(' · '):'')+' · '+new Date(post.createdAt).toLocaleDateString('es-CL');card.append(meta);if(safePhoto(post.photo)){const im=document.createElement('img');im.src=safePhoto(post.photo);im.alt='';im.style='max-width:100%;max-height:140px;object-fit:contain;margin-top:8px';card.append(im)}const body=document.createElement('p');body.textContent=post.caption;card.append(body);const actions=document.createElement('div');actions.className='actions';for(const [label,fn,cls] of [['Editar',()=>editPost(post.id),'btn'],['Copiar',()=>copyPost(post.id),'btn'],['Eliminar',()=>deletePost(post.id),'btn danger']]){const button=document.createElement('button');button.className=cls;button.textContent=label;button.addEventListener('click',fn);actions.append(button)}card.append(actions);q.append(card)}}
+window.editPost=id=>{const p=posts.find(x=>x.id===id);if(!p)return;currentDraft=p;currentPhoto=safePhoto(p.photo);$('caption').value=p.caption;$('service').value=p.service||'Otro servicio';$('commune').value=p.commune||'San Ramón';document.querySelectorAll('[name=channel]').forEach(x=>x.checked=(p.channels||[]).includes(x.value));showPreview();switchTab('crear')};
+window.copyPost=async id=>{const p=posts.find(x=>x.id===id);if(p){await navigator.clipboard.writeText(p.caption);alert('Texto copiado.')}};
+window.deletePost=async id=>{if(confirm('¿Eliminar esta publicación de la cola central?')){const prior=posts;posts=posts.filter(x=>x.id!==id);persist();try{await crmApi('marketing/posts/'+encodeURIComponent(id),{method:'DELETE'});$('message').textContent='Publicación eliminada de la nube y de este dispositivo.'}catch(e){posts=prior;persist();alert('No se pudo eliminar en la nube: '+e.message)}}};
+function agentCard(text,tag){const el=document.createElement('article');el.className='post';const p=document.createElement('p');p.textContent=text;el.append(p);if(tag){const small=document.createElement('small');small.className='hint';small.textContent=tag;el.append(small)}return el}
+function agentRender(run){
+ const box=$('agentResults');box.replaceChildren();
+ if(!run){box.textContent='Todavía no hay un plan generado.';return}
+ const summary=agentCard(run.summary||'Plan de seguimiento',run.date+' · '+(run.status==='aprobado_por_usuario'?'Revisado':'Pendiente de revisión'));box.append(summary);
+ const tasks=Array.isArray(run.tasks)?run.tasks:[];
+ if(!tasks.length){box.append(agentCard('No se identificaron tareas concretas.','Sin acciones sugeridas'));return}
+ tasks.forEach(task=>{
+  const card=document.createElement('article');card.className='post';
+  const heading=document.createElement('b');heading.textContent=(task.priority||'media').toUpperCase()+' · '+(task.type==='booking_review'?'Revisar reserva #'+task.bookingId:'Seguimiento cliente #'+task.leadId);card.append(heading);
+  const reason=document.createElement('p');reason.textContent=task.reason||'';card.append(reason);
+  const action=document.createElement('p');action.textContent='Siguiente paso: '+(task.action||'Revisar manualmente');card.append(action);
+  if(task.draftMessage){const draft=document.createElement('p');draft.className='preview';draft.textContent=task.draftMessage;card.append(draft);const copy=document.createElement('button');copy.className='btn';copy.type='button';copy.textContent='Copiar borrador';copy.onclick=async()=>{try{await navigator.clipboard.writeText(task.draftMessage);$('agentStatus').textContent='Borrador copiado.'}catch{$('agentStatus').textContent='No se pudo copiar; selecciona el texto manualmente.'}};card.append(copy)}
+  box.append(card);
+ });
+ if(run.status==='pendiente_revision'){const approve=document.createElement('button');approve.className='btn primary';approve.type='button';approve.textContent='Marcar plan como revisado';approve.onclick=async()=>{approve.disabled=true;try{await crmApi('marketing/agent/runs/'+encodeURIComponent(run.id)+'/approve',{method:'POST',body:JSON.stringify({})});run.status='aprobado_por_usuario';agentRender(run);$('agentStatus').textContent='Plan revisado. No se envió nada a clientes.'}catch(e){$('agentStatus').textContent=e.message;approve.disabled=false}};box.append(approve)}
+}
+async function agentLoad(){const box=$('agentResults');box.textContent='Cargando último plan...';try{const runs=await crmApi('marketing/agent/runs');agentRender(runs[0]||null)}catch(e){box.textContent=e.message}}
+async function agentGenerate(){const button=$('agentGenerate');button.disabled=true;$('agentStatus').textContent='Analizando CRM y agenda en Preview...';try{const data=await crmApi('marketing/agent/briefing',{method:'POST',body:JSON.stringify({})});agentRender(data.run||null);$('agentStatus').textContent=data.message||'Plan generado. Revisa cada sugerencia antes de utilizarla.'}catch(e){$('agentStatus').textContent=e.message}finally{button.disabled=false}}
+$('agentGenerate')?.addEventListener('click',agentGenerate);
+$('agentRefresh')?.addEventListener('click',agentLoad);
+function switchTab(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));['crear','cola','plan','agenda','respuestas','crm','agente','promociones','datos'].forEach(id=>$('tab-'+id).classList.toggle('hidden',id!==t));if(t==='crm')crmSync();if(t==='plan')editorialLoad();if(t==='agenda')renderBookings();if(t==='agente')agentLoad();if(t==='promociones')loadPromotions()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+async function loadPromotions(){
+ const box=$('promoList');box.textContent='Cargando...';
+ try{
+  const rows=await crmApi('promotions');box.replaceChildren();
+  if(!rows.length){box.textContent='Todavía no hay promociones.';return}
+  for(const p of rows){
+   const card=document.createElement('article');card.className='post';
+   const head=document.createElement('div');head.className='posthead';
+   const title=document.createElement('b');title.textContent=p.title;
+   const tag=document.createElement('span');tag.className='tag';tag.textContent=p.status;
+   head.append(title,tag);card.append(head);
+   const desc=document.createElement('p');desc.textContent=(p.description||'')+(p.price!==null?' · $'+Number(p.price).toLocaleString('es-CL'):'');card.append(desc);
+   const meta=document.createElement('small');meta.className='hint';
+   meta.textContent='Canal: '+(p.audience==='app'?'Solo app':p.audience==='web'?'Solo web':'Web y app')+' · Vigencia: '+(p.starts_at||'Sin inicio')+' a '+(p.ends_at||'Sin término')+' · Cupos: '+(p.max_uses??'ilimitados')+' · Usados: '+p.used_count;card.append(meta);
+   const actions=document.createElement('div');actions.className='actions';
+   for(const [label,status] of [['Activar','activa'],['Pausar','pausada'],['Vencer','vencida'],['Borrador','borrador']]){
+    const btn=document.createElement('button');btn.className='btn';btn.textContent=label;
+    btn.addEventListener('click',async()=>{try{await crmApi('promotions/'+p.id,{method:'PATCH',body:JSON.stringify({status})});loadPromotions()}catch(e){$('promoMessage').textContent=e.message}});
+    actions.append(btn);
+   }
+   card.append(actions);box.append(card);
+  }
+ }catch(e){box.textContent=e.message}
+}
+const replyServiceInfo={pack:{name:'Pack de limpieza de tapiz',price:'$30.000 promoción de lanzamiento (precio de referencia $35.000)',time:'1,5 a 2 horas',includes:'cielo, piso y alfombras, asientos delanteros y traseros'},full:{name:'Full interior',price:'$50.000',time:'3 horas en sedán pequeño; 4 a 5 horas en vehículos grandes',includes:'limpieza profunda de cielo, asientos, piso, maleta, puertas, tablero, plásticos y ductos de ventilación, con vapor, inyección de espuma y extracción. No incluye vidrios ni carrocería'},motor:{name:'Limpieza superficial de motor a vapor',price:'$20.000',time:'1 a 1,5 horas',includes:'limpieza superficial con vapor, sin desarme'}};
+function buildReply(){const intent=$('replyIntent').value,key=$('replyService').value,s=replyServiceInfo[key],name=$('replyName').value.trim(),hello='Hola'+(name?' '+name:'')+'! ';let msg='';if(intent==='price')msg=hello+'Gracias por escribir a EMANUELDETAIL. El '+s.name.toLowerCase()+' tiene un valor de '+s.price+'. Incluye '+s.includes+'. El tiempo estimado es '+s.time+'. Atendemos con reserva previa en nuestro espacio de trabajo en San Ramón.';else if(intent==='availability')msg=hello+'Gracias por consultar. Nuestro horario de atención es lunes a jueves de 10:00 a 18:30 y viernes de 10:00 a 16:00. Para revisar qué horario está disponible, cuéntame qué servicio necesitas y qué día te acomoda. La reserva queda confirmada una vez que revisemos y acordemos el horario.';else if(intent==='location')msg=hello+'Atendemos en nuestro espacio de trabajo en San Ramón, con reserva previa. Por el momento no contamos con servicio a domicilio. Si me comentas desde qué comuna vienes, te orientamos para coordinar.';else if(intent==='full')msg=hello+'Nuestro Full interior tiene un valor de $50.000. Incluye limpieza profunda de cielo, asientos, piso, maleta, puertas, tablero, plásticos y ductos de ventilación, utilizando vapor, inyección de espuma y extracción. No incluye vidrios ni carrocería. El tiempo estimado es de 3 horas en sedanes pequeños y de 4 a 5 horas en vehículos grandes, según su estado.';else if(intent==='motor')msg=hello+'La limpieza superficial de motor a vapor tiene un valor de $20.000 y demora aproximadamente 1 a 1,5 horas. Es una limpieza superficial, no contempla desarme del motor. Atendemos en San Ramón con reserva previa.';else msg=hello+'Para orientarte bien con el servicio y el tiempo de trabajo, ¿me puedes enviar algunas fotografías del interior del vehículo y contarme qué tipo de vehículo es? Así revisamos su estado antes de coordinar la reserva.';$('replyText').value=msg;$('replyMsg').textContent='Respuesta preparada. Revísala antes de enviarla.'}
+$('makeReply').addEventListener('click',buildReply);
+$('generateAIReply').addEventListener('click',async()=>{
+ const message=$('aiIncomingMessage').value.trim();
+ if(!message){$('aiReplyStatus').textContent='Pega primero el mensaje del cliente.';return}
+ const button=$('generateAIReply');button.disabled=true;$('aiReplyStatus').textContent='La IA está analizando la consulta...';$('aiHandoffNotice').classList.add('hidden');
+ try{
+  const response=await fetch('/api/marketing/ai-reply',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,channel:$('aiReplyChannel').value,customerName:$('aiReplyCustomer').value.trim(),mode:'mixed',scope:'both'})});
+  const data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo generar la respuesta');
+  $('aiReplyOutput').value=data.answer||'';
+  if(data.handoff){$('aiHandoffNotice').textContent='Derivación humana recomendada: '+(data.handoff_reason||'consulta que requiere revisión del equipo')+'. No envíes una respuesta automática sin revisarla.';$('aiHandoffNotice').classList.remove('hidden')}
+  $('aiReplyStatus').textContent='Respuesta preparada para '+data.channel+'. Revisa y copia antes de enviarla.';
+ }catch(error){$('aiReplyStatus').textContent=error.message}
+ finally{button.disabled=false}
+});
+$('copyAIReply').addEventListener('click',async()=>{
+ const value=$('aiReplyOutput').value.trim();if(!value){$('aiReplyStatus').textContent='Primero genera una respuesta.';return}
+ try{await navigator.clipboard.writeText(value);$('aiReplyStatus').textContent='Respuesta copiada. Pégala en la conversación original.'}
+ catch{$('aiReplyOutput').select();document.execCommand('copy');$('aiReplyStatus').textContent='Respuesta seleccionada para copiar.'}
+});
+$('copyReply').addEventListener('click',async()=>{const value=$('replyText').value.trim();if(!value){$('replyMsg').textContent='Primero prepara una respuesta.';return}try{await navigator.clipboard.writeText(value);$('replyMsg').textContent='Respuesta copiada. Puedes pegarla en el chat del cliente.'}catch{$('replyText').select();document.execCommand('copy');$('replyMsg').textContent='Respuesta seleccionada para copiar.'}});
+const bookingCatalog={pack:{label:'Pack de limpieza de tapiz',price:30000},full:{label:'Full interior',price:50000},motor:{label:'Limpieza superficial de motor a vapor',price:20000}};
+function bookingDuration(service,size,condition){if(service==='pack')return condition==='heavy'?120:90;if(service==='full')return size==='large'?(condition==='heavy'?300:240):180;return condition==='heavy'?90:60}
+function fmtDuration(min){return min%60?((min-min%60)/60)+' h '+(min%60)+' min':(min/60)+' h'}
+function updateBookingEstimate(){const service=$('bookingService').value,size=$('bookingVehicle').value,condition=$('bookingCondition').value,min=bookingDuration(service,size,condition),price=bookingCatalog[service].price;$('bookingEstimate').textContent='Duración estimada: '+fmtDuration(min)+' · Precio: $'+price.toLocaleString('es-CL')+' · Tiempo de trabajo, no incluye demoras extraordinarias.'}
+['bookingService','bookingVehicle','bookingCondition'].forEach(id=>$(id).addEventListener('change',updateBookingEstimate));
+$('bookingDate').min=new Date().toLocaleDateString('en-CA');
+async function renderBookings(){
+ const box=$('bookingList');if(!box)return;box.replaceChildren();
+ if(!authReady){const p=document.createElement('p');p.className='hint';p.textContent='Inicia sesión para consultar la agenda central.';box.append(p);return}
+ box.textContent='Cargando agenda central...';
+ try{
+  bookings=await crmApi('bookings');box.replaceChildren();
+  if(!bookings.length){const p=document.createElement('p');p.className='hint';p.textContent='Todavía no hay solicitudes de reserva.';box.append(p);return}
+  const labels={pack:'Pack limpieza de tapiz',full:'Full interior',motor:'Limpieza de motor a vapor'};
+  for(const b of bookings){
+   const card=document.createElement('article');card.className='post';
+   const head=document.createElement('div');head.className='posthead';
+   const title=document.createElement('b');title.textContent=b.name+' · '+(labels[b.service]||b.service);
+   const tag=document.createElement('span');tag.className='tag';tag.textContent=b.status;head.append(title,tag);card.append(head);
+   const p=document.createElement('p');p.textContent=new Date(b.booking_date+'T12:00:00').toLocaleDateString('es-CL')+' · '+b.start_time+' · '+b.commune+' · '+b.phone+(b.notes?' · '+b.notes:'');card.append(p);
+   const status=document.createElement('select');status.setAttribute('aria-label','Estado de reserva de '+b.name);
+   [['pendiente','Pendiente'],['confirmada','Confirmada'],['reprogramacion','Reprogramación'],['cancelada','Cancelada']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;o.selected=b.status===v;status.append(o)});
+   status.addEventListener('change',async()=>{const previous=b.status;status.disabled=true;try{await crmApi('bookings/'+b.id,{method:'PATCH',body:JSON.stringify({status:status.value})});b.status=status.value;tag.textContent=status.value}catch(err){status.value=previous;alert('No se pudo actualizar la reserva: '+err.message)}finally{status.disabled=false}});
+   card.append(status);box.append(card);
+  }
+ }catch(err){box.replaceChildren();const p=document.createElement('p');p.className='hint';p.textContent=err.message;box.append(p)}
+}
+$('bookingForm').addEventListener('submit',async e=>{
+ e.preventDefault();const date=$('bookingDate').value,start=$('bookingStart').value,service=$('bookingService').value,size=$('bookingVehicle').value,condition=$('bookingCondition').value,duration=bookingDuration(service,size,condition),[hh,mm]=start.split(':').map(Number),startM=hh*60+mm,endM=startM+duration,day=new Date(date+'T12:00:00').getDay(),close=day===5?960:1110,msg=$('bookingMsg');
+ if(!date||!start){msg.textContent='Completa fecha y hora.';return}
+ if(day===0||day===6){msg.textContent='EmanuelDetail no atiende sábados ni domingos por ahora.';return}
+ if(startM<600||endM>close){msg.textContent=day===5?'El viernes el horario es 10:00 a 16:00.':'El horario de lunes a jueves es 10:00 a 18:30.';return}
+ if(!authReady){msg.textContent='Inicia sesión para registrar la solicitud.';return}
+ const end=String(Math.floor(endM/60)).padStart(2,'0')+':'+String(endM%60).padStart(2,'0');
+ msg.textContent='Guardando en agenda central...';
+ try{
+  await crmApi('bookings',{method:'POST',body:JSON.stringify({name:$('bookingName').value.trim(),phone:$('bookingPhone').value.trim(),service:bookingCatalog[service].label,commune:'San Ramón',date,start,notes:'Vehículo: '+size+'; estado: '+condition+'; duración estimada: '+fmtDuration(duration)+'; término estimado: '+end})});
+  $('bookingForm').reset();$('bookingDate').min=new Date().toLocaleDateString('en-CA');updateBookingEstimate();msg.textContent='Solicitud guardada en D1 como pendiente. Confirma solo después de acordar con el cliente.';await renderBookings();
+ }catch(err){msg.textContent='No se pudo guardar: '+err.message}
+});
+$('bookingRefresh')?.addEventListener('click',renderBookings);
+updateBookingEstimate();
+let editorialItems=[];
+function editorialReset(){ $('editorialForm').reset(); $('editorialId').value=''; $('editorialStatus').value='planificado'; $('editorialSave').textContent='Guardar en calendario';}
+function editorialRender(){
+ const box=$('calendar');box.replaceChildren();
+ if(!editorialItems.length){const p=document.createElement('p');p.className='hint';p.textContent='El calendario está vacío. Agrega tu primera actividad usando el formulario.';box.append(p);return;}
+ for(const item of editorialItems){
+  const card=document.createElement('article');card.className='post';
+  const head=document.createElement('div');head.className='posthead';
+  const title=document.createElement('b');title.textContent=new Date(item.publishDate+'T12:00:00').toLocaleDateString('es-CL',{weekday:'long',day:'2-digit',month:'long'})+' · '+item.title;
+  const tag=document.createElement('span');tag.className='tag';tag.textContent=({planificado:'Planificado',en_preparacion:'En preparación',publicado:'Publicado',cancelado:'Cancelado'})[item.status]||item.status;head.append(title,tag);
+  const desc=document.createElement('p');desc.textContent=item.description;
+  const meta=document.createElement('small');meta.className='hint';meta.textContent='Canales: '+(item.channels||'Por definir');
+  const actions=document.createElement('div');actions.className='actions';
+  const edit=document.createElement('button');edit.className='btn';edit.type='button';edit.textContent='Editar';edit.onclick=()=>{ $('editorialId').value=item.id;$('editorialDate').value=item.publishDate;$('editorialTitle').value=item.title;$('editorialDescription').value=item.description;$('editorialChannels').value=item.channels||'';$('editorialStatus').value=item.status;$('editorialSave').textContent='Guardar cambios';$('editorialForm').scrollIntoView({behavior:'smooth',block:'start'});};
+  const del=document.createElement('button');del.className='btn danger';del.type='button';del.textContent='Eliminar';del.onclick=async()=>{if(!confirm('¿Eliminar esta actividad del calendario compartido?'))return;try{await crmApi('marketing/calendar/'+encodeURIComponent(item.id),{method:'DELETE'});await editorialLoad();$('editorialMessage').textContent='Actividad eliminada.'}catch(e){$('editorialMessage').textContent=e.message}};
+  actions.append(edit,del);card.append(head,desc,meta,actions);box.append(card);
+ }
+}
+async function editorialLoad(){const box=$('calendar');box.textContent='Cargando calendario compartido…';try{editorialItems=await crmApi('marketing/calendar');editorialItems.sort((a,b)=>a.publishDate.localeCompare(b.publishDate)||a.title.localeCompare(b.title));editorialRender()}catch(e){box.textContent='No se pudo cargar el calendario: '+e.message}}
+$('editorialForm').addEventListener('submit',async e=>{e.preventDefault();const msg=$('editorialMessage');const id=$('editorialId').value||newId();const payload={id,publishDate:$('editorialDate').value,title:$('editorialTitle').value.trim(),description:$('editorialDescription').value.trim(),channels:$('editorialChannels').value.trim(),status:$('editorialStatus').value};$('editorialSave').disabled=true;msg.textContent='Guardando en la nube…';try{await crmApi('marketing/calendar',{method:'POST',body:JSON.stringify(payload)});editorialReset();msg.textContent='Actividad guardada y sincronizada.';await editorialLoad()}catch(err){msg.textContent='No se pudo guardar: '+err.message}finally{$('editorialSave').disabled=false}});
+$('editorialCancel').addEventListener('click',()=>{editorialReset();$('editorialMessage').textContent='Formulario limpio.'});
+$('editorialRefresh').addEventListener('click',editorialLoad);
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify({app:'EmanuelDetail Marketing IA',version:1,exportedAt:new Date().toISOString(),posts},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='emanueldetail-marketing-respaldo.json';a.click();URL.revokeObjectURL(a.href)};
+$('importFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!Array.isArray(d.posts))throw Error('El respaldo no contiene publicaciones válidas.');posts=[...d.posts.filter(x=>x&&typeof x.caption==='string'&&x.caption.length<=5000).map(x=>({id:String(x.id).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,80)||newId(),createdAt:typeof x.createdAt==='string'?x.createdAt:new Date().toISOString(),service:String(x.service||'Publicación').slice(0,120),commune:String(x.commune||'').slice(0,80),channels:Array.isArray(x.channels)?x.channels.filter(v=>['Página de Facebook','Grupos de Facebook','Marketplace','Marketplace 1','Marketplace 2','Instagram'].includes(v)):[],caption:x.caption,photo:safePhoto(x.photo),status:['borrador','aprobado','publicado'].includes(x.status)?x.status:'borrador'})),...posts];const map=new Map(posts.map(p=>[p.id,p]));posts=[...map.values()];persist();alert('Respaldo importado.')}catch(err){alert(err.message)}e.target.value=''};
+renderStats();renderQueue();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/marketing/sw.js').catch(()=>{}));
+
+/* PASSWORD-ONLY AUTH: no email, OTP ni Resend */
+const authMessage = (id, message) => { const el = $(id); if (el) el.textContent = message || ""; };
+function authPane(name) {
+  ["authLoginPane","authChangePane"].forEach(id => $(id)?.classList.toggle("hidden", id !== name));
+}
+function authShowApp() {
+  authReady = true;
+  $("authGate")?.classList.add("hidden");
+  $("adminShell")?.classList.remove("hidden");
+  crmSync();
+  syncMarketingPosts().catch(error=>{const m=$("message");if(m)m.textContent="No se pudo sincronizar la cola con la nube: "+error.message;});
+}
+async function authRequest(path, payload = {}) {
+  const response = await fetch("/api/auth/" + path, {
+    method:"POST", credentials:"same-origin",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({...payload,scope:"marketing"})
+  });
+  const data = await response.json().catch(()=>({}));
+  if (!response.ok) throw new Error(data.error || "No se pudo completar el ingreso ("+response.status+").");
+  return data;
+}
+async function authLogin() {
+  const button=$("authLoginButton"), password=$("authPassword")?.value || "";
+  if(!password){authMessage("authMessage","Ingresa tu contraseña.");return;}
+  button.disabled=true;button.textContent="Verificando…";authMessage("authMessage","");
+  try {
+    const data=await authRequest("login",{password});
+    $("authPassword").value="";
+    if(data.mustChange) authPane("authChangePane");
+    else authShowApp();
+  } catch(error) { authMessage("authMessage",error.message); }
+  finally { button.disabled=false;button.textContent="Ingresar"; }
+}
+async function authChangePassword() {
+  const button=$("authChangeButton"),password=$("authNewPassword").value,confirm=$("authConfirmPassword").value;
+  if(password.length<12){authMessage("authChangeMessage","La contraseña debe tener al menos 12 caracteres.");return;}
+  if(password!==confirm){authMessage("authChangeMessage","Las contraseñas no coinciden.");return;}
+  button.disabled=true;button.textContent="Guardando…";
+  try {
+    const data=await authRequest("change-password",{password});
+    $("authNewPassword").value="";$("authConfirmPassword").value="";
+    authMessage("authChangeMessage",data.message || "Contraseña definitiva guardada.");
+    authShowApp();
+  } catch(error){authMessage("authChangeMessage",error.message);}
+  finally{button.disabled=false;button.textContent="Guardar contraseña definitiva";}
+}
+async function authLogout() {
+  try { await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({scope:"marketing"})}); }
+  finally {
+    authReady=false;$("adminShell")?.classList.add("hidden");$("authGate")?.classList.remove("hidden");
+    $("authPassword").value="";authPane("authLoginPane");authMessage("authMessage","Sesión cerrada.");crmSync();
+  }
+}
+$("authLoginButton")?.addEventListener("click",authLogin);
+$("authPassword")?.addEventListener("keydown",e=>{if(e.key==="Enter")authLogin();});
+$("authChangeButton")?.addEventListener("click",authChangePassword);
+$("globalLogout")?.addEventListener("click",authLogout);
+(async function authInit(){
+  try {
+    const response=await fetch("/api/auth/me?scope=marketing",{credentials:"same-origin",cache:"no-store"});
+    const data=await response.json();
+    if(response.ok && data.loggedIn){if(data.mustChange)authPane("authChangePane");else authShowApp();}
+  } catch(error){authMessage("authMessage","No se pudo verificar la sesión. Recarga la página para intentar nuevamente.");}
+})();</script></body></html>
