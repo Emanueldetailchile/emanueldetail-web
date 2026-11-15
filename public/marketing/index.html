@@ -320,7 +320,7 @@ async function authRequest(path, payload = {}) {
   const response = await fetch("/api/auth/" + path, {
     method:"POST", credentials:"same-origin",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({...payload,scope:"marketing"})
+    body:JSON.stringify({...payload,scope:"site"})
   });
   const data = await response.json().catch(()=>({}));
   if (!response.ok) throw new Error(data.error || "No se pudo completar el ingreso ("+response.status+").");
@@ -352,7 +352,7 @@ async function authChangePassword() {
   finally{button.disabled=false;button.textContent="Guardar contraseña definitiva";}
 }
 async function authLogout() {
-  try { await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({scope:"marketing"})}); }
+  try { await fetch("/api/auth/logout",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({scope:"site"})}); }
   finally {
     authReady=false;$("adminShell")?.classList.add("hidden");$("authGate")?.classList.remove("hidden");
     $("authPassword").value="";authPane("authLoginPane");authMessage("authMessage","Sesión cerrada.");crmSync();
@@ -364,7 +364,7 @@ $("authChangeButton")?.addEventListener("click",authChangePassword);
 $("globalLogout")?.addEventListener("click",authLogout);
 (async function authInit(){
   try {
-    const response=await fetch("/api/auth/me?scope=marketing",{credentials:"same-origin",cache:"no-store"});
+    const response=await fetch("/api/auth/me?scope=site",{credentials:"same-origin",cache:"no-store"});
     const data=await response.json();
     if(response.ok && data.loggedIn){if(data.mustChange)authPane("authChangePane");else authShowApp();}
   } catch(error){authMessage("authMessage","No se pudo verificar la sesión. Recarga la página para intentar nuevamente.");}
