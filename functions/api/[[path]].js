@@ -828,8 +828,9 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
     const statuses = new Set(["pendiente","confirmada","reprogramacion","cancelada"]);
     if (!statuses.has(b.status)) return json({ error: "Estado de reserva no válido." }, 400);
-    await env.DB.prepare("UPDATE service_bookings SET status=?,updated_at=? WHERE id=?").bind(b.status,Date.now(),id).run();
-    return json({ ok: true });
+    const result = await env.DB.prepare("UPDATE service_bookings SET status=?,updated_at=? WHERE id=?").bind(b.status,Date.now(),id).run();
+    if (!result.meta?.changes) return json({error:"Reserva no encontrada."},404);
+    return json({ ok: true, status: b.status });
   }
   if (path === "promotions" && req.method === "GET") {
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS promotions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', price INTEGER, starts_at TEXT, ends_at TEXT, max_uses INTEGER, used_count INTEGER NOT NULL DEFAULT 0, code TEXT, status TEXT NOT NULL DEFAULT 'borrador', audience TEXT NOT NULL DEFAULT 'all', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
@@ -863,8 +864,9 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     let b = {}; try { b = await req.json(); } catch { return json({ error: "JSON inválido." }, 400); }
     const statuses = new Set(["borrador","activa","pausada","vencida"]);
     if (!statuses.has(b.status)) return json({ error: "Estado no válido." }, 400);
-    await env.DB.prepare("UPDATE promotions SET status=?,updated_at=? WHERE id=?").bind(b.status,Date.now(),id).run();
-    return json({ ok: true });
+    const result = await env.DB.prepare("UPDATE promotions SET status=?,updated_at=? WHERE id=?").bind(b.status,Date.now(),id).run();
+    if (!result.meta?.changes) return json({error:"Promoción no encontrada."},404);
+    return json({ ok: true, status: b.status });
   }
 
   if (path === "store-config" && req.method === "PUT") {
