@@ -20,6 +20,11 @@ function cookieValue(req, name) {
 }
 function bytesHex(bytes) { return Array.from(new Uint8Array(bytes)).map(x => x.toString(16).padStart(2,"0")).join(""); }
 async function sha256(value) { return bytesHex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))); }
+function validISODate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value + "T12:00:00Z");
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0,10) === value;
+}
 function randomToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
@@ -1106,7 +1111,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     const now = Date.now();
     const result = await env.DB.prepare(
       "INSERT INTO marketing_leads(name,contact,source,service,notes,next_followup_at,status,created_at,updated_at) VALUES(?,?,?,?,?,?, 'nuevo',?,?)"
-    ).bind(name,contact,source,service,notes,typeof b.next_followup_at==="string" && /^\d{4}-\d{2}-\d{2}$/.test(b.next_followup_at) ? b.next_followup_at : null,now,now).run();
+    ).bind(name,contact,source,service,notes,validISODate(b.next_followup_at) ? b.next_followup_at : null,now,now).run();
     return json({ ok: true, id: result.meta.last_row_id }, 201);
   }
 
@@ -1139,12 +1144,12 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       if (b[field] !== undefined) {
         if (field === "status" && !statuses.has(b[field])) continue;
         if (field === "next_followup_at") {
-          if (b[field] !== "" && b[field] !== null && (typeof b[field] !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b[field]))) return json({ error: "Fecha de seguimiento no válida." }, 400);
+          if (b[field] !== "" && b[field] !== null && !validISODate(b[field])) return json({ error: "Fecha de seguimiento no válida." }, 400);
           sets.push(field + "=?"); values.push(b[field] || null); continue;
         }
         if (typeof b[field] !== "string") return json({ error: "Campo no válido: " + field }, 400);
         sets.push(field + "=?");
-        values.push(b[field].trim().slice(0, field === "notes" ? 1200 : 160));
+        values.push(b[field].trim().slice(0, field === "notes" ? 1200 : field === "contact" ? 120 : 160));
       }
     }
     if (!sets.length) return json({ error: "No hay cambios válidos." }, 400);
