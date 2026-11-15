@@ -1108,6 +1108,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     const sources = new Set(["whatsapp","facebook","instagram","marketplace_1","marketplace_2","web","otro"]);
     const source = sources.has(b.source) ? b.source : "";
     if (!name || !source) return json({ error: "Nombre y canal de origen son obligatorios." }, 400);
+    if (b.next_followup_at && !validISODate(b.next_followup_at)) return json({ error: "Fecha de seguimiento no válida." }, 400);
     const now = Date.now();
     const result = await env.DB.prepare(
       "INSERT INTO marketing_leads(name,contact,source,service,notes,next_followup_at,status,created_at,updated_at) VALUES(?,?,?,?,?,?, 'nuevo',?,?)"
