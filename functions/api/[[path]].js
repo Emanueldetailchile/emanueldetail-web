@@ -736,6 +736,19 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
   }
 
   if (path === "contact" && req.method === "POST") {
+    if (!env.DB) return json({ error: "El formulario no está disponible temporalmente." }, 503);
+    await env.DB.prepare("CREATE TABLE IF NOT EXISTS contact_attempts (ip_hash TEXT PRIMARY KEY, window_start INTEGER NOT NULL, count INTEGER NOT NULL)").run();
+    const now = Date.now();
+    const ipHash = await sha256(req.headers.get("CF-Connecting-IP") || "unknown");
+    const attempt = await env.DB.prepare("SELECT window_start,count FROM contact_attempts WHERE ip_hash=?").bind(ipHash).first();
+    if (attempt && Number(attempt.window_start) > now-60*60*1000 && Number(attempt.count) >= 5) {
+      return json({ error: "Se alcanzó el límite de consultas. Intenta nuevamente más tarde o escríbenos por WhatsApp." }, 429);
+    }
+    if (!attempt || Number(attempt.window_start) <= now-60*60*1000) {
+      await env.DB.prepare("INSERT INTO contact_attempts(ip_hash,window_start,count) VALUES(?,?,1) ON CONFLICT(ip_hash) DO UPDATE SET window_start=excluded.window_start,count=1").bind(ipHash,now).run();
+    } else {
+      await env.DB.prepare("UPDATE contact_attempts SET count=count+1 WHERE ip_hash=?").bind(ipHash).run();
+    }
     let b = {};
     try { b = await req.json(); } catch { return json({ error: "Solicitud inválida." }, 400); }
     const name = typeof b.name === "string" ? b.name.trim().slice(0,120) : "";
@@ -744,7 +757,6 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     const notes = typeof b.notes === "string" ? b.notes.trim().slice(0,900) : "";
     if (!name || !contact) return json({ error: "Indica tu nombre y un teléfono o correo de contacto." }, 400);
     await env.DB.prepare("CREATE TABLE IF NOT EXISTS marketing_leads (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, contact TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, service TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'nuevo', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)").run();
-    const now = Date.now();
     const result = await env.DB.prepare("INSERT INTO marketing_leads(name,contact,source,service,notes,status,created_at,updated_at) VALUES(?,?, 'web', ?, ?, 'nuevo', ?, ?)").bind(name,contact,service,notes,now,now).run();
     return json({ ok: true, id: result.meta.last_row_id, message: "Consulta recibida. EmanuelDetail se pondrá en contacto contigo." }, 201);
   }
