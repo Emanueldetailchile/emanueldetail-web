@@ -518,10 +518,10 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
     const ext = allowed.get(file.type);
     if (!ext) return json({ error: "Formato no permitido. Usa JPG, PNG o WebP." }, 415);
     if (file.size < 1 || file.size > 8 * 1024 * 1024) return json({ error: "La imagen debe pesar como máximo 8 MB." }, 413);
+    const base = String(env.R2_PUBLIC_URL || "").replace(/\/$/, "");
+    if (!/^https:\/\//i.test(base)) return json({ error: "Falta configurar una URL pública HTTPS para las imágenes." }, 503);
     const key = "marketing/" + crypto.randomUUID() + "." + ext;
     await env.IMAGES.put(key, file.stream(), { httpMetadata: { contentType: file.type, cacheControl: "public, max-age=31536000, immutable" } });
-    const base = String(env.R2_PUBLIC_URL || "").replace(/\/$/, "");
-    if (!base) return json({ error: "Falta configurar R2_PUBLIC_URL." }, 503);
     return json({ ok: true, key, publicUrl: base + "/" + key }, 201);
   }
 
