@@ -13,3 +13,16 @@ bucket_name = "emanueldetail-imagenes"
 
 [vars]
 R2_PUBLIC_URL = "https://pub-b985f908dab04541837258217cdf0a0e.r2.dev"
+
+# Preview aislado: nunca usar la base ni el bucket de producción.
+[env.preview.vars]
+R2_PUBLIC_URL = "https://pub-5585f4aa0da6468fb7f45044499da8df.r2.dev"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "emanueldetail-marketing-preview-db"
+database_id = "d44f2cc3-610f-46f9-bd1e-9dbdbc1f088a"
+
+[[env.preview.r2_buckets]]
+binding = "IMAGES"
+bucket_name = "emanueldetail-marketing-preview-images"
