@@ -17,6 +17,11 @@ R2_PUBLIC_URL = "https://pub-b985f908dab04541837258217cdf0a0e.r2.dev"
 # Preview aislado: nunca usar la base ni el bucket de producción.
 [env.preview.vars]
 R2_PUBLIC_URL = "https://pub-5585f4aa0da6468fb7f45044499da8df.r2.dev"
+ADMIN_RECOVERY_EMAIL = "emanueldetailchile@gmail.com"
+EMAIL_FROM = "EMANUELDETAIL <onboarding@resend.dev>"
+
+[env.preview.ai]
+binding = "AI"
 
 [[env.preview.d1_databases]]
 binding = "DB"
