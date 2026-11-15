@@ -342,7 +342,7 @@ async function refresh() {
       api('products'),
       api('gallery')
     ]);
-    await refreshSiteImages();
+    await Promise.all([refreshSiteImages(), loadStoreConfig()]);
 
     $('products').innerHTML =
       '<h3>Productos publicados (' + products.length + ')</h3>' +
