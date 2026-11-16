@@ -48,6 +48,18 @@ nav{display:flex;gap:8px;overflow:auto;padding:15px 0}nav button,.btn{border:1px
 <div class="field"><label for="aiReplyOutput">Respuesta sugerida (editable)</label><textarea id="aiReplyOutput" rows="7" placeholder="La respuesta aparecerá aquí..."></textarea></div>
 <div class="actions"><button class="btn" id="copyAIReply" type="button">Copiar respuesta</button></div>
 <hr style="border-color:#49391b;margin:20px 0">
+<h2>Registrar interesado en CRM</h2>
+<p class="hint">Guarda la consulta en la base central y conserva el perfil de Marketplace que la originó. Revisa los datos antes de guardar.</p>
+<div class="two">
+<div class="field"><label for="agentLeadName">Nombre del interesado *</label><input id="agentLeadName" maxlength="120" placeholder="Nombre del cliente"></div>
+<div class="field"><label for="agentLeadContact">Teléfono o contacto</label><input id="agentLeadContact" maxlength="120" placeholder="+56 9... (si lo entregó)"></div>
+<div class="field"><label for="agentLeadService">Servicio de interés</label><select id="agentLeadService"><option value="">Por identificar</option><option>Pack de limpieza de tapiz</option><option>Full interior</option><option>Limpieza superficial de motor a vapor</option><option>Otro / requiere evaluación</option></select></div>
+<div class="field"><label for="agentLeadFollowup">Próximo seguimiento</label><input id="agentLeadFollowup" type="date"></div>
+</div>
+<div class="field"><label for="agentLeadNotes">Resumen de la consulta</label><textarea id="agentLeadNotes" rows="3" maxlength="1200" placeholder="Se completa con el mensaje recibido; puedes editarlo."></textarea></div>
+<div class="actions"><button class="btn primary" id="saveAgentLead" type="button">Guardar interesado en CRM</button></div>
+<p class="status" id="agentLeadStatus" role="status"></p>
+<hr style="border-color:#49391b;margin:20px 0">
 <h2>Respuestas rápidas por plantilla</h2><p class="hint">Prepara respuestas para copiar en WhatsApp, Messenger, Instagram o Marketplace. No envía mensajes automáticamente: la solicitud de autorización de Meta está en revisión; hasta que se apruebe y configure la conexión oficial, las respuestas se envían manualmente.</p><div class="two"><div class="field"><label for="replyIntent">¿Qué pregunta el cliente?</label><select id="replyIntent"><option value="price">Precio y qué incluye</option><option value="availability">Agenda y horarios</option><option value="location">Ubicación y atención</option><option value="full">Detalles del Full interior</option><option value="motor">Limpieza de motor</option><option value="photos">Evaluar estado del vehículo</option></select></div><div class="field"><label for="replyService">Servicio consultado</label><select id="replyService"><option value="pack">Pack de limpieza de tapiz · $30.000</option><option value="full">Full interior · $50.000</option><option value="motor">Motor a vapor · $20.000</option></select></div></div><div class="field"><label for="replyName">Nombre del cliente (opcional)</label><input id="replyName" maxlength="80" placeholder="Ej. Camila"></div><div class="field"><label for="replyText">Respuesta lista para revisar y enviar</label><textarea id="replyText" rows="9" placeholder="Selecciona una consulta para preparar la respuesta."></textarea></div><div class="actions"><button class="btn primary" id="makeReply" type="button">Preparar respuesta</button><button class="btn" id="copyReply" type="button">Copiar respuesta</button></div><p id="replyMsg" class="status"></p><div class="notice">Regla comercial: nunca prometemos un horario hasta revisar la agenda. La atención es en nuestro espacio de trabajo en San Ramón; no ofrecemos domicilio por ahora.</div></div></section>
 <section id="tab-crm" class="hidden">
 <div class="panel">
@@ -185,6 +197,17 @@ async function loadPromotions(){
 const replyServiceInfo={pack:{name:'Pack de limpieza de tapiz',price:'$30.000 promoción de lanzamiento (precio de referencia $35.000)',time:'1,5 a 2 horas',includes:'cielo, piso y alfombras, asientos delanteros y traseros'},full:{name:'Full interior',price:'$50.000',time:'3 horas en sedán pequeño; 4 a 5 horas en vehículos grandes',includes:'limpieza profunda de cielo, asientos, piso, maleta, puertas, tablero, plásticos y ductos de ventilación, con vapor, inyección de espuma y extracción. No incluye vidrios ni carrocería'},motor:{name:'Limpieza superficial de motor a vapor',price:'$20.000',time:'1 a 1,5 horas',includes:'limpieza superficial con vapor, sin desarme'}};
 function buildReply(){const intent=$('replyIntent').value,key=$('replyService').value,s=replyServiceInfo[key],name=$('replyName').value.trim(),hello='Hola'+(name?' '+name:'')+'! ';let msg='';if(intent==='price')msg=hello+'Gracias por escribir a EMANUELDETAIL. El '+s.name.toLowerCase()+' tiene un valor de '+s.price+'. Incluye '+s.includes+'. El tiempo estimado es '+s.time+'. Atendemos con reserva previa en nuestro espacio de trabajo en San Ramón.';else if(intent==='availability')msg=hello+'Gracias por consultar. Nuestro horario de atención es lunes a jueves de 10:00 a 18:30 y viernes de 10:00 a 16:00. Para revisar qué horario está disponible, cuéntame qué servicio necesitas y qué día te acomoda. La reserva queda confirmada una vez que revisemos y acordemos el horario.';else if(intent==='location')msg=hello+'Atendemos en nuestro espacio de trabajo en San Ramón, con reserva previa. Por el momento no contamos con servicio a domicilio. Si me comentas desde qué comuna vienes, te orientamos para coordinar.';else if(intent==='full')msg=hello+'Nuestro Full interior tiene un valor de $50.000. Incluye limpieza profunda de cielo, asientos, piso, maleta, puertas, tablero, plásticos y ductos de ventilación, utilizando vapor, inyección de espuma y extracción. No incluye vidrios ni carrocería. El tiempo estimado es de 3 horas en sedanes pequeños y de 4 a 5 horas en vehículos grandes, según su estado.';else if(intent==='motor')msg=hello+'La limpieza superficial de motor a vapor tiene un valor de $20.000 y demora aproximadamente 1 a 1,5 horas. Es una limpieza superficial, no contempla desarme del motor. Atendemos en San Ramón con reserva previa.';else msg=hello+'Para orientarte bien con el servicio y el tiempo de trabajo, ¿me puedes enviar algunas fotografías del interior del vehículo y contarme qué tipo de vehículo es? Así revisamos su estado antes de coordinar la reserva.';$('replyText').value=msg;$('replyMsg').textContent='Respuesta preparada. Revísala antes de enviarla.'}
 $('makeReply').addEventListener('click',buildReply);
+$('aiReplyChannel').addEventListener('change',()=>{const channel=$('aiReplyChannel').value;if(channel==='Marketplace 1')$('agentLeadStatus').textContent='El interesado se registrará desde Marketplace 1.';else if(channel==='Marketplace 2')$('agentLeadStatus').textContent='El interesado se registrará desde Marketplace 2.';});
+$('saveAgentLead').addEventListener('click',async()=>{
+ const name=$('agentLeadName').value.trim();const channel=$('aiReplyChannel').value;
+ const source=channel==='Marketplace 1'?'marketplace_1':channel==='Marketplace 2'?'marketplace_2':channel==='Facebook'?'facebook':channel==='Instagram'?'instagram':channel==='WhatsApp'?'whatsapp':'otro';
+ if(!name){$('agentLeadStatus').textContent='Ingresa el nombre del interesado para guardar el registro.';return}
+ const button=$('saveAgentLead');button.disabled=true;$('agentLeadStatus').textContent='Guardando en CRM...';
+ const payload={name,contact:$('agentLeadContact').value.trim(),source,service:$('agentLeadService').value,notes:$('agentLeadNotes').value.trim()||$('aiIncomingMessage').value.trim(),next_followup_at:$('agentLeadFollowup').value};
+ try{const result=await crmApi('leads',{method:'POST',body:JSON.stringify(payload)});$('agentLeadStatus').textContent='Interesado guardado en CRM (registro #'+result.id+'). Canal: '+channel+'.';$('agentLeadFollowup').value='';}
+ catch(error){$('agentLeadStatus').textContent='No se pudo guardar: '+error.message}
+ finally{button.disabled=false}
+});
 $('generateAIReply').addEventListener('click',async()=>{
  const message=$('aiIncomingMessage').value.trim();
  if(!message){$('aiReplyStatus').textContent='Pega primero el mensaje del cliente.';return}
@@ -193,6 +216,9 @@ $('generateAIReply').addEventListener('click',async()=>{
   const response=await fetch('/api/marketing/ai-reply',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,channel:$('aiReplyChannel').value,customerName:$('aiReplyCustomer').value.trim(),mode:'mixed',scope:'both'})});
   const data=await response.json();if(!response.ok)throw Error(data.error||'No se pudo generar la respuesta');
   $('aiReplyOutput').value=data.answer||'';
+  $('agentLeadName').value=$('aiReplyCustomer').value.trim();
+  $('agentLeadNotes').value=message;
+  $('agentLeadService').value='';
   if(data.handoff){$('aiHandoffNotice').textContent='Derivación humana recomendada: '+(data.handoff_reason||'consulta que requiere revisión del equipo')+'. No envíes una respuesta automática sin revisarla.';$('aiHandoffNotice').classList.remove('hidden')}
   $('aiReplyStatus').textContent='Respuesta preparada para '+data.channel+'. Revisa y copia antes de enviarla.';
  }catch(error){$('aiReplyStatus').textContent=error.message}
