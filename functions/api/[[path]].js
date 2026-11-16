@@ -477,7 +477,15 @@ FORMATO OBLIGATORIO: devuelve únicamente JSON válido con campos answer (respue
     const channel = ["Marketplace 1","Marketplace 2","Facebook","Instagram","WhatsApp"].includes(body.channel) ? body.channel : "Otro canal";
     const customerName = typeof body.customerName === "string" ? body.customerName.trim().slice(0,80) : "";
     if (!message) return json({ error: "Pega el mensaje del cliente." }, 400);
+    const marketplaceAgent = channel === "Marketplace 1" || channel === "Marketplace 2";
+    const agentId = channel === "Marketplace 1" ? "marketplace_1" : channel === "Marketplace 2" ? "marketplace_2" : "";
+    const agentInstructions = channel === "Marketplace 1"
+      ? "AGENTE ACTIVO: MARKETPLACE PERFIL 1. Identifica esta conversación exclusivamente como origen marketplace_1. Atiende consultas de este perfil, califica el interés y conduce a cotización/reserva. No mezcles registros ni conversaciones del perfil 2."
+      : channel === "Marketplace 2"
+      ? "AGENTE ACTIVO: MARKETPLACE PERFIL 2. Identifica esta conversación exclusivamente como origen marketplace_2. Atiende consultas de este perfil, califica el interés y conduce a cotización/reserva. No mezcles registros ni conversaciones del perfil 1."
+      : "AGENTE GENERAL: conserva las reglas del canal seleccionado; no alteres ni interfieras con el flujo de WhatsApp.";
     const system = `Eres el asistente comercial de EMANUELDETAIL, negocio de detailing automotriz en San Ramón, Santiago de Chile.
+${agentInstructions}
 MODO MIXTO: responde directamente preguntas frecuentes que puedas resolver con datos confirmados. Marca handoff=true para reclamos, negociación, solicitudes especiales, servicios no incluidos, datos insuficientes o cualquier duda. Nunca inventes disponibilidad ni confirmes reservas.
 CATÁLOGO CONFIRMADO:
 - Pack de limpieza de tapiz: promoción lanzamiento $30.000 (referencia $35.000); incluye cielo, asientos delanteros y traseros, piso y alfombras; duración estimada 1,5 a 2 horas.
@@ -502,7 +510,7 @@ Responde ÚNICAMENTE JSON válido: {"answer":"respuesta al cliente","handoff":fa
       catch { parsed = { answer: raw.trim(), handoff: true, handoff_reason: "Respuesta requiere revisión humana" }; }
       const answer = String(parsed.answer || "").slice(0, 1400);
       if (!answer) throw new Error("empty_answer");
-      return json({ ok: true, answer, handoff: parsed.handoff === true, handoff_reason: String(parsed.handoff_reason || "").slice(0,180), channel, mode:"mixed", scope:"both", provider:"Cloudflare Workers AI" });
+      return json({ ok: true, answer, handoff: parsed.handoff === true, handoff_reason: String(parsed.handoff_reason || "").slice(0,180), channel, agent_id: agentId || "general", mode:"mixed", scope: marketplaceAgent ? "single_marketplace_profile" : "channel_only", provider:"Cloudflare Workers AI" });
     } catch {
       return json({ error: "La IA no pudo procesar este mensaje. Inténtalo nuevamente o responde manualmente." }, 503);
     }
