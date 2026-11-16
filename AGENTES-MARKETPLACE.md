@@ -1,6 +1,6 @@
 # Agentes comerciales de Marketplace — EmanuelDetail
 
-Estado: playbooks creados e instrucciones diferenciadas integradas en el endpoint IA del panel Marketing IA (rama `marketing-ia-mvp`). Validación en navegador pendiente.
+Estado: playbooks creados e instrucciones diferenciadas integradas en el endpoint IA del panel Marketing IA (rama `marketing-ia-mvp`). Validación en navegador pendiente; el código incluye registro directo de interesados en CRM.
 Alcance: Marketplace perfil 1 y Marketplace perfil 2. Ambos agentes comparten catálogo y reglas comerciales, pero cada conversación conserva su canal de origen.
 
 ## Agente 1 — Marketplace perfil 1
@@ -71,6 +71,7 @@ Eres el asistente comercial de EmanuelDetail, negocio de limpieza y detailing au
 - El endpoint identifica Marketplace 1 como `marketplace_1` y Marketplace 2 como `marketplace_2`, y añade instrucciones específicas para evitar mezclar perfiles. Los demás canales mantienen el flujo general.
 - Salida: respuesta sugerida editable, intención detectada, servicio probable, datos faltantes, nivel de interés, necesidad de intervención humana y resumen para CRM.
 - Acciones permitidas en MVP: generar sugerencia, copiar respuesta, registrar prospecto y preparar seguimiento.
+- La pestaña Respuestas incorpora un bloque de registro de interesados: precarga nombre, canal y mensaje original; permite añadir contacto, servicio y fecha de seguimiento; guarda el prospecto directamente en el CRM central con el origen Marketplace 1 o Marketplace 2.
 - La interfaz existente de Respuestas ya permite seleccionar Marketplace perfil 1 o perfil 2; al generar la sugerencia, el backend aplica el agente correspondiente.
 - Acciones no habilitadas: leer chats directamente, enviar mensajes a Marketplace, publicar anuncios o grupos automáticamente.
 - El operador debe copiar el mensaje al panel y enviar manualmente la respuesta desde Facebook. Cualquier integración futura requiere autorización oficial y pruebas reales.
