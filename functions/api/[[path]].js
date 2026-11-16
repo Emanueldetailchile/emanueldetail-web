@@ -58,7 +58,14 @@ async function sessionInfo(req, env, scope) {
 }
 async function authorized(req, env, scope = "site") {
   const session = await sessionInfo(req,env,scope);
-  return !!session && !session.mustChange;
+  if (session && !session.mustChange) return true;
+  // Marketing IA now shares the site's existing administrator login.
+  // Keep accepting a legacy Marketing session while allowing the unified site session.
+  if (scope === "marketing") {
+    const siteSession = await sessionInfo(req,env,"site");
+    return !!siteSession && !siteSession.mustChange;
+  }
+  return false;
 }
 async function issueSession(env,scope) {
   const token = randomToken(), tokenHash = await sha256(token), now = Date.now();
