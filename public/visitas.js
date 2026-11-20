@@ -6,5 +6,5 @@
   const el = document.createElement('aside'); el.id = 'ed-visit-counter'; el.setAttribute('aria-label','Comunidad Detail');
   el.innerHTML = '<strong>Comunidad Detail</strong><div>Visitantes: <span id="ed-unique">—</span></div>';
   document.body.appendChild(el);
-  (async () => { try { await fetch('/api/visits',{method:'POST',credentials:'same-origin',cache:'no-store'}); const r=await fetch('/api/visits',{cache:'no-store'}); if(!r.ok) throw new Error('stats'); const s=await r.json(); document.getElementById('ed-unique').textContent=String(s.uniqueVisitors+5); } catch (_) { el.hidden=true; } })();
+  (async () => { try { await fetch('/api/visits',{method:'POST',credentials:'same-origin',cache:'no-store'}); const r=await fetch('/api/visits',{cache:'no-store'}); if(!r.ok) throw new Error('stats'); const s=await r.json(); document.getElementById('ed-unique').textContent=String(s.uniqueVisitors); } catch (_) { el.hidden=true; } })();
 })();
